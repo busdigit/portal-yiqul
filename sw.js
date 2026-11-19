@@ -19,6 +19,7 @@ const ASSETS_TO_CACHE = [
   './src/services/sanitizer.js',
   './src/services/uploader.js',
   './src/services/cloudSync.js',
+  './src/services/firebaseService.js',
   './src/components/Header.js',
   './src/components/SearchRibbon.js',
   './src/components/AppCard.js',

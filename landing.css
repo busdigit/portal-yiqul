@@ -1,0 +1,646 @@
+/**
+ * LANDING PAGE STYLESHEET (TECHWITPRO STYLE)
+ * Portal Yiqul - Cosmic Midnight, Glassmorphism Floating Pill & Modern Tech Aesthetic
+ */
+
+/* View Mode Switching */
+body.view-landing #landing-view-container {
+  display: block;
+}
+
+body.view-landing #portal-view-container {
+  display: none !important;
+}
+
+body.view-portal #landing-view-container {
+  display: none !important;
+}
+
+body.view-portal #portal-view-container {
+  display: block;
+}
+
+/* Landing Page Wrapper & Ambience Background */
+.landing-wrapper {
+  background-color: #060B18;
+  background-image: 
+    radial-gradient(circle at 50% -10%, rgba(16, 185, 129, 0.18) 0%, rgba(59, 130, 246, 0.08) 35%, transparent 70%),
+    radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-size: 100% 100%, 32px 32px;
+  color: #F8FAFC;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+/* Subtle Glow Balls */
+.landing-glow-1 {
+  position: absolute;
+  top: 15%;
+  left: 5%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, transparent 70%);
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.landing-glow-2 {
+  position: absolute;
+  top: 35%;
+  right: 5%;
+  width: 450px;
+  height: 450px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, transparent 70%);
+  filter: blur(70px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ==========================================================================
+   FLOATING PILL NAVIGATION BAR (TECHWITPRO NAVBAR STYLE)
+   ========================================================================== */
+
+.floating-navbar-wrapper {
+  position: sticky;
+  top: 1.25rem;
+  z-index: 50;
+  padding: 0 1rem;
+  width: 100%;
+}
+
+.floating-pill-nav {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0.5rem 0.625rem 0.5rem 1.25rem;
+  background: rgba(10, 18, 38, 0.78);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  transition: all var(--transition-normal);
+}
+
+.floating-pill-nav:hover {
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 12px 35px -8px rgba(16, 185, 129, 0.15);
+}
+
+.landing-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  text-decoration: none;
+  color: #FFFFFF;
+}
+
+.landing-brand-logo {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.landing-brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.landing-brand-title {
+  font-size: 1.0625rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #FFFFFF;
+}
+
+/* Nav Menu Links */
+.landing-nav-links {
+  display: none;
+  align-items: center;
+  gap: 1.5rem;
+  list-style: none;
+}
+
+@media (min-width: 768px) {
+  .landing-nav-links {
+    display: flex;
+  }
+}
+
+.landing-nav-link {
+  color: #94A3B8;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: color var(--transition-fast);
+}
+
+.landing-nav-link:hover {
+  color: #FFFFFF;
+}
+
+/* White Pill Button (Techwitpro Action Button) */
+.btn-white-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #FFFFFF;
+  color: #0F172A;
+  padding: 0.5625rem 1.25rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.2);
+}
+
+.btn-white-pill:hover {
+  background-color: var(--color-primary-400);
+  color: #064E3B;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-white-pill-arrow {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background-color: #0F172A;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+}
+
+.btn-white-pill:hover .btn-white-pill-arrow {
+  background-color: #064E3B;
+}
+
+/* ==========================================================================
+   HERO SECTION (TECHWITPRO STYLE TYPOGRAPHY & BADGES)
+   ========================================================================== */
+
+.landing-hero {
+  position: relative;
+  z-index: 10;
+  padding-top: 3.5rem;
+  padding-bottom: 3rem;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .landing-hero {
+    padding-top: 5rem;
+    padding-bottom: 4rem;
+  }
+}
+
+/* Trust Badges Bar (Clutch, Google Reviews style) */
+.trust-badges-bar {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+  padding: 0.375rem 1.25rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.trust-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #CBD5E1;
+}
+
+.trust-stars {
+  color: #FBBF24;
+  letter-spacing: 1px;
+  font-size: 0.6875rem;
+}
+
+.trust-item-divider {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Headline Split Typography */
+.landing-headline {
+  font-size: clamp(2.25rem, 6vw, 4.25rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  color: #FFFFFF;
+  max-width: 950px;
+  margin: 0 auto 1.25rem auto;
+}
+
+.headline-serif-italic {
+  font-family: 'Amiri', 'Playfair Display', Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  color: #6EE7B7;
+  text-shadow: 0 0 35px rgba(16, 185, 129, 0.4);
+  display: inline-block;
+}
+
+.landing-subheadline {
+  font-size: clamp(0.9375rem, 2vw, 1.125rem);
+  color: #94A3B8;
+  max-width: 720px;
+  margin: 0 auto 2.25rem auto;
+  line-height: 1.6;
+}
+
+/* Hero CTA Buttons */
+.landing-hero-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 3.5rem;
+}
+
+.btn-landing-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.875rem 2rem;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
+  color: #FFFFFF;
+  font-size: 1rem;
+  font-weight: 700;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.15);
+  transition: all var(--transition-normal);
+}
+
+.btn-landing-primary:hover {
+  background: linear-gradient(135deg, var(--color-primary-400), var(--color-primary-600));
+  box-shadow: 0 6px 28px rgba(16, 185, 129, 0.5);
+  transform: translateY(-2px);
+}
+
+.btn-landing-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.75rem;
+  border-radius: var(--radius-pill);
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #F8FAFC;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-landing-secondary:hover {
+  background: rgba(51, 65, 85, 0.8);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ==========================================================================
+   BROWSER MOCKUP SHOWCASE CARD (INTERACTIVE PORTAL PREVIEW)
+   ========================================================================== */
+
+.showcase-browser-wrapper {
+  max-width: 1120px;
+  margin: 0 auto 4rem auto;
+  padding: 0 1rem;
+  position: relative;
+  z-index: 10;
+}
+
+.showcase-browser-frame {
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 
+    0 25px 60px -15px rgba(0, 0, 0, 0.7),
+    0 0 50px -10px rgba(16, 185, 129, 0.15);
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.showcase-browser-frame:hover {
+  box-shadow: 
+    0 30px 70px -10px rgba(0, 0, 0, 0.8),
+    0 0 60px -5px rgba(16, 185, 129, 0.25);
+}
+
+/* Browser Top Header Bar */
+.browser-header-bar {
+  background: rgba(10, 16, 32, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.browser-dots {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.browser-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.browser-dot.red { background-color: #EF4444; }
+.browser-dot.yellow { background-color: #F59E0B; }
+.browser-dot.green { background-color: #10B981; }
+
+.browser-address-bar {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-pill);
+  padding: 0.25rem 1.25rem;
+  font-size: 0.75rem;
+  color: #94A3B8;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 480px;
+  width: 100%;
+}
+
+.browser-address-bar i {
+  color: #10B981;
+}
+
+/* Inside Preview Area */
+.browser-inner-content {
+  padding: 2rem 1.5rem;
+  background: linear-gradient(180deg, #0B1224 0%, #060B18 100%);
+}
+
+@media (min-width: 768px) {
+  .browser-inner-content {
+    padding: 2.5rem 2rem;
+  }
+}
+
+.preview-grid-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .preview-grid-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .preview-grid-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.preview-mini-card {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-card);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.75rem;
+  text-align: left;
+  transition: all var(--transition-fast);
+}
+
+.preview-mini-card:hover {
+  background: rgba(51, 65, 85, 0.7);
+  border-color: var(--color-primary-500);
+  transform: translateY(-3px);
+}
+
+/* ==========================================================================
+   STATS COUNTER ROW
+   ========================================================================== */
+
+.landing-stats-row {
+  max-width: 1120px;
+  margin: 0 auto 5rem auto;
+  padding: 0 1rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+.stat-card {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-card);
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+}
+
+.stat-number {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: #10B981;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.8125rem;
+  color: #94A3B8;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   ECOSYSTEM PILLARS & CORE MODULES
+   ========================================================================== */
+
+.landing-pillars-section {
+  max-width: 1120px;
+  margin: 0 auto 5rem auto;
+  padding: 0 1rem;
+  text-align: center;
+}
+
+.pillars-tagline {
+  color: #10B981;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
+}
+
+.pillars-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  margin-bottom: 2.5rem;
+  letter-spacing: -0.02em;
+}
+
+.pillars-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .pillars-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .pillars-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.pillar-item-card {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-card);
+  padding: 1.75rem 1.5rem;
+  text-align: left;
+  transition: all var(--transition-normal);
+}
+
+.pillar-item-card:hover {
+  border-color: rgba(16, 185, 129, 0.4);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+}
+
+.pillar-icon-box {
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--radius-md);
+  background: rgba(16, 185, 129, 0.15);
+  color: #34D399;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.pillar-card-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 0.5rem;
+}
+
+.pillar-card-desc {
+  font-size: 0.875rem;
+  color: #94A3B8;
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   BOTTOM CTA CALLOUT SECTION
+   ========================================================================== */
+
+.landing-bottom-cta {
+  max-width: 1120px;
+  margin: 0 auto 5rem auto;
+  padding: 0 1rem;
+}
+
+.bottom-cta-banner {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(15, 23, 42, 0.95) 100%);
+  border: 1.5px solid rgba(16, 185, 129, 0.3);
+  border-radius: 24px;
+  padding: 3rem 2rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.bottom-cta-title {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 800;
+  color: #FFFFFF;
+  margin-bottom: 0.75rem;
+}
+
+.bottom-cta-desc {
+  font-size: 1rem;
+  color: #CBD5E1;
+  max-width: 600px;
+  margin: 0 auto 2rem auto;
+}
+
+/* Back to Landing Button (Displayed in Portal View) */
+.btn-back-to-landing {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.btn-back-to-landing:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--color-primary-600);
+  border-color: var(--color-primary-400);
+}
