@@ -1,0 +1,20 @@
+{
+  "name": "aplikasi-portal-yiqul",
+  "version": "1.0.0",
+  "description": "Unified Digital Ecosystem Launcher & Dynamic Link Engine - Yayasan Islam Qudwatul Ummah",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/run-all.js"
+  },
+  "keywords": [
+    "portal",
+    "launcher",
+    "yiqul",
+    "santriverse",
+    "bento-grid",
+    "apps-script"
+  ],
+  "author": "Tim Digital Yayasan Islam Qudwatul Ummah",
+  "license": "MIT"
+}
