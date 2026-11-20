@@ -1,1 +1,8 @@
 
+├── assets/          <-- Folder icon PWA (wajib ada)
+├── src/             <-- Folder CSS, JS, Komponen (wajib ada)
+├── .nojekyll        <-- Mematikan Jekyll (wajib ada)
+├── index.html       <-- File halaman utama
+├── manifest.json    <-- PWA Manifest
+├── netlify.toml
+└── sw.js            <-- Service Worker
