@@ -1233,19 +1233,22 @@ async function pushToCloud() {
 
 /* --- MODULE: src/services/firebaseService.js --- */
 /**
- * SERVICE: FIREBASE CLOUD DATABASE CONNECTOR (V2.0 ROBUST)
+ * SERVICE: FIREBASE CLOUD DATABASE CONNECTOR (V3.0 HYBRID RESILIENT)
  * Portal Yiqul - Unified Digital Ecosystem Launcher
  * 
  * Mengintegrasikan Firebase Cloud Firestore (Spark Plan - Gratis 100%)
- * Menggunakan Firebase Web Modular SDK resmi dari Google CDN (gstatic)
- * yang 100% bebas dari masalah CORS dan mendukung koneksi real-time.
+ * Menggunakan:
+ * 1. Official Firebase Web SDK dengan experimentalForceLongPolling (anti-blokir firewall/proxy)
+ * 2. Fallback REST API v1 asli Google Cloud
+ * 3. Support Firebase Realtime Database
+ * 4. Diagnostik cerdas ramah pemula jika database belum dibuat di console
  */
 
 
 const STORAGE_KEY_FIREBASE_CONFIG = 'yiqul_firebase_config';
 
 /**
- * Konfigurasi Firebase Resmi Portal Yiqul
+ * Konfigurasi Resmi Firebase Portal Yiqul milik Yayasan Islam Qudwatul Ummah
  */
 const DEFAULT_FIREBASE_CONFIG = {
   apiKey: "AIzaSyA9SXs99SRS5inz36SqZDC1VmYLc13uK14",
@@ -1255,7 +1258,7 @@ const DEFAULT_FIREBASE_CONFIG = {
   messagingSenderId: "189548123496",
   appId: "1:189548123496:web:c6dbbd288b8e625c56b2dd",
   databaseType: 'firestore',
-  rtdbUrl: ''
+  rtdbUrl: 'https://portal-yiqul-db-default-rtdb.asia-southeast1.firebasedatabase.app'
 };
 
 function getStorage() {
@@ -1285,17 +1288,16 @@ function getFirebaseConfig() {
  */
 function saveFirebaseConfig(config) {
   const storage = getStorage();
+  const current = getFirebaseConfig();
+  const updated = { ...DEFAULT_FIREBASE_CONFIG, ...current, ...config };
   if (storage) {
-    const current = getFirebaseConfig();
-    const updated = { ...current, ...config };
     storage.setItem(STORAGE_KEY_FIREBASE_CONFIG, JSON.stringify(updated));
-    return updated;
   }
-  return config;
+  return updated;
 }
 
 /**
- * Cek apakah Firebase sudah dikonfigurasi dengan Project ID & API Key valid
+ * Cek apakah Firebase sudah dikonfigurasi
  */
 function isFirebaseConfigured() {
   const cfg = getFirebaseConfig();
@@ -1304,18 +1306,32 @@ function isFirebaseConfigured() {
 
 /**
  * Helper: Memuat modul resmi Firebase Web SDK dari Google CDN
+ * dengan proteksi long-polling untuk mencegah pemblokiran koneksi streaming
  */
+let cachedFirebase = null;
+
 async function getFirebaseModules(cfg) {
   if (typeof window === 'undefined') return null;
+  if (cachedFirebase) return cachedFirebase;
 
   try {
     const { initializeApp, getApps, getApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-    const { getFirestore, doc, setDoc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const { initializeFirestore, getFirestore, doc, setDoc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
 
     const app = getApps().length === 0 ? initializeApp(cfg) : getApp();
-    const db = getFirestore(app);
+    
+    // Inisialisasi Firestore dengan experimentalForceLongPolling agar stabil di semua jaringan provider
+    let db;
+    try {
+      db = initializeFirestore(app, {
+        experimentalForceLongPolling: true
+      });
+    } catch (e) {
+      db = getFirestore(app);
+    }
 
-    return { db, doc, setDoc, getDoc };
+    cachedFirebase = { db, doc, setDoc, getDoc };
+    return cachedFirebase;
   } catch (err) {
     console.warn('[Firebase SDK CDN Load Warning]', err);
     return null;
@@ -1342,7 +1358,22 @@ async function pushToFirebase() {
 
   const jsonString = JSON.stringify(payload);
 
-  // 1. Coba gunakan Official Firebase Web SDK (Bebas CORS & Resmi)
+  // Mode RTDB
+  if (cfg.databaseType === 'rtdb') {
+    const dbUrl = cfg.rtdbUrl || `https://${cfg.projectId}-default-rtdb.asia-southeast1.firebasedatabase.app`;
+    const endpoint = `${dbUrl.replace(/\/$/, '')}/portal_yiqul.json?auth=${cfg.apiKey}`;
+    const response = await fetch(endpoint, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: jsonString
+    });
+    if (!response.ok) {
+      throw new Error(`Gagal menyimpan ke Realtime Database. Status: ${response.status}`);
+    }
+    return { success: true, database: 'rtdb', savedAt: payload.updatedAt };
+  }
+
+  // Mode Firestore (1. Coba via SDK Resmi dengan Long-Polling)
   const fb = await getFirebaseModules(cfg);
   if (fb) {
     try {
@@ -1355,17 +1386,11 @@ async function pushToFirebase() {
       return { success: true, database: 'firestore', savedAt: payload.updatedAt };
     } catch (sdkError) {
       console.error('[Firebase SDK push error]', sdkError);
-      if (sdkError.code === 'not-found' || sdkError.message?.includes('not-found') || sdkError.message?.includes('does not exist')) {
-        throw new Error('Database Cloud Firestore belum dibuat di Firebase Console! Buka console.firebase.google.com -> Build -> Firestore Database -> Create database.');
-      }
-      if (sdkError.code === 'permission-denied') {
-        throw new Error('Izin ditolak oleh Security Rules Firestore! Buka tab Rules di Firestore Database dan atur "allow read, write: if true;".');
-      }
-      throw new Error(`Firebase Error: ${sdkError.message || sdkError.code}`);
+      handleDetailedFirebaseError(sdkError);
     }
   }
 
-  // 2. Fallback REST API
+  // Fallback REST API
   const endpoint = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/portal_yiqul/registry?key=${cfg.apiKey}`;
   const firestoreBody = {
     fields: {
@@ -1397,46 +1422,46 @@ async function pullFromFirebase() {
     throw new Error('Konfigurasi Firebase belum lengkap. Masukkan API Key dan Project ID di Pengaturan Admin.');
   }
 
-  // 1. Coba gunakan Official Firebase Web SDK
+  // Mode RTDB
+  if (cfg.databaseType === 'rtdb') {
+    const dbUrl = cfg.rtdbUrl || `https://${cfg.projectId}-default-rtdb.asia-southeast1.firebasedatabase.app`;
+    const endpoint = `${dbUrl.replace(/\/$/, '')}/portal_yiqul.json?auth=${cfg.apiKey}`;
+    const response = await fetch(endpoint);
+    if (!response.ok) throw new Error(`Gagal membaca Realtime Database (${response.status})`);
+    const data = await response.json();
+    if (!data) throw new Error('Data di Realtime Database masih kosong.');
+    importRegistryJson(typeof data === 'string' ? data : JSON.stringify(data));
+    return { success: true, database: 'rtdb' };
+  }
+
+  // 1. Coba via SDK Resmi
   const fb = await getFirebaseModules(cfg);
   if (fb) {
     try {
       const docRef = fb.doc(fb.db, 'portal_yiqul', 'registry');
       const snap = await fb.getDoc(docRef);
       if (!snap.exists()) {
-        throw new Error('Dokumen database di Firestore belum ada. Silakan klik "Unggah ke Firebase (Push)" terlebih dahulu.');
+        throw new Error('Dokumen database belum ada di Firestore. Klik tombol "Unggah ke Firebase (Push)" terlebih dahulu.');
       }
       const data = snap.data();
-      if (!data || !data.payload) {
-        throw new Error('Data di Firestore kosong.');
-      }
+      if (!data || !data.payload) throw new Error('Data payload Firestore kosong.');
       importRegistryJson(data.payload);
       return { success: true, database: 'firestore' };
     } catch (sdkError) {
       console.error('[Firebase SDK pull error]', sdkError);
-      if (sdkError.code === 'not-found' || sdkError.message?.includes('not-found') || sdkError.message?.includes('does not exist')) {
-        throw new Error('Database Cloud Firestore belum dibuat di Firebase Console! Buka console.firebase.google.com -> Build -> Firestore Database -> Create database.');
-      }
-      if (sdkError.code === 'permission-denied') {
-        throw new Error('Izin ditolak oleh Security Rules Firestore! Buka tab Rules di Firestore Database dan atur "allow read, write: if true;".');
-      }
-      throw new Error(`Firebase Error: ${sdkError.message || sdkError.code}`);
+      handleDetailedFirebaseError(sdkError);
     }
   }
 
   // 2. Fallback REST API
   const endpoint = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/portal_yiqul/registry?key=${cfg.apiKey}`;
-  const response = await fetch(endpoint, {
-    method: 'GET',
-    headers: { 'Accept': 'application/json' }
-  });
+  const response = await fetch(endpoint);
 
   if (response.status === 404) {
     throw new Error('Database Firestore belum diinisialisasi. Silakan klik tombol "Unggah ke Firebase (Push)" terlebih dahulu!');
   }
-
   if (!response.ok) {
-    throw new Error(`Gagal mengambil data dari Firestore REST Status: ${response.status}`);
+    throw new Error(`Gagal mengambil data dari Firestore REST (Status: ${response.status})`);
   }
 
   const doc = await response.json();
@@ -1447,7 +1472,7 @@ async function pullFromFirebase() {
 }
 
 /**
- * Uji koneksi ke Firebase dengan diagnostik terperinci
+ * Uji koneksi ke Firebase dengan diagnosa langkah perbaikan otomatis
  */
 async function testFirebaseConnection() {
   const cfg = getFirebaseConfig();
@@ -1463,31 +1488,70 @@ async function testFirebaseConnection() {
       await fb.getDoc(docRef);
       return { 
         success: true, 
-        message: 'Koneksi ke Firebase Cloud Firestore Berhasil 100%! Database siap digunakan.' 
+        message: 'Alhamdulillah! Koneksi ke Firebase Cloud Firestore Berhasil 100%!\nDatabase siap digunakan untuk sinkronisasi.' 
       };
     }
   } catch (sdkError) {
     console.error('[Firebase Test Error]', sdkError);
-    if (sdkError.code === 'not-found' || sdkError.message?.includes('not-found') || sdkError.message?.includes('does not exist')) {
-      return {
-        success: false,
-        message: 'Database Cloud Firestore belum dibuat di Firebase Console!\n\nLangkah perbaikan:\n1. Buka console.firebase.google.com\n2. Klik menu Build -> Firestore Database\n3. Klik "Create database" -> Pilih lokasi Jakarta -> Pilih "Start in test mode" -> Klik Create.'
+    return getFriendlyDiagnostic(sdkError, cfg);
+  }
+
+  // 2. Coba uji via REST API jika SDK CDN diblokir
+  try {
+    const endpoint = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents?key=${cfg.apiKey}&pageSize=1`;
+    const res = await fetch(endpoint);
+    if (res.ok || res.status === 404) {
+      return { 
+        success: true, 
+        message: 'Alhamdulillah! Koneksi REST ke Cloud Firestore Berhasil!\nDatabase aktif dan terhubung.' 
       };
     }
-    if (sdkError.code === 'permission-denied') {
-      return {
-        success: false,
-        message: 'Akses ditolak Security Rules Firestore!\n\nLangkah perbaikan:\nBuka tab Rules di Firestore Database dan ganti rules menjadi:\nallow read, write: if true;'
-      };
-    }
-    return { 
-      success: false, 
-      message: `Gagal menghubungi Firebase: ${sdkError.message || sdkError.code}` 
+    const errJson = await res.json().catch(() => null);
+    return {
+      success: false,
+      message: `Google API menolak akses (${res.status}): ${errJson?.error?.message || res.statusText}`
+    };
+  } catch (netErr) {
+    return getFriendlyDiagnostic(netErr, cfg);
+  }
+}
+
+/**
+ * Format pesan diagnosa ramah pemula ketika terjadi error
+ */
+function getFriendlyDiagnostic(err, cfg) {
+  const errStr = String(err.message || err.code || err);
+
+  if (errStr.includes('Failed to fetch') || errStr.includes('network') || err.name === 'TypeError') {
+    return {
+      success: false,
+      message: `⚠️ Gagal menghubungi server Firebase (Failed to fetch).\n\nAda 2 kemungkinan penyebab utama:\n\n1. Database Cloud Firestore BELUM DIBUAT di Firebase Console:\n   👉 Buka https://console.firebase.google.com/project/${cfg.projectId}/firestore\n   👉 Klik tombol biru "Create database" (Buat database)\n   👉 Pilih lokasi: Jakarta (asia-southeast2)\n   👉 Pilih aturan: "Start in test mode", lalu klik "Create".\n\n2. Ekstensi Browser / AdBlocker memblokir koneksi:\n   👉 Nonaktifkan AdBlocker (AdBlock/Shields) untuk situs ini atau coba buka lewat jendela Incognito (Private).`
     };
   }
 
-  // Fallback environment (Node.js test)
-  return { success: true, message: 'Koneksi Firebase terverifikasi secara lokal.' };
+  if (err.code === 'not-found' || errStr.includes('not-found') || errStr.includes('does not exist')) {
+    return {
+      success: false,
+      message: `⚠️ Database Cloud Firestore belum dibuat untuk project "${cfg.projectId}"!\n\nCara memperbaiki:\n1. Kunjungi: https://console.firebase.google.com/project/${cfg.projectId}/firestore\n2. Klik tombol "Create database"\n3. Pilih lokasi Jakarta dan "Start in test mode"\n4. Klik Create.`
+    };
+  }
+
+  if (err.code === 'permission-denied' || errStr.includes('permission-denied') || errStr.includes('PERMISSION_DENIED')) {
+    return {
+      success: false,
+      message: `⚠️ Akses ditolak oleh Aturan Keamanan (Security Rules)!\n\nCara memperbaiki:\n1. Buka tab "Rules" di https://console.firebase.google.com/project/${cfg.projectId}/firestore\n2. Ganti kodenya menjadi:\n   allow read, write: if true;\n3. Klik tombol "Publish".`
+    };
+  }
+
+  return {
+    success: false,
+    message: `Gagal menghubungi Firebase: ${errStr}`
+  };
+}
+
+function handleDetailedFirebaseError(err) {
+  const diag = getFriendlyDiagnostic(err, getFirebaseConfig());
+  throw new Error(diag.message);
 }
 
 
@@ -3561,7 +3625,12 @@ function renderTabRoleSettings(container) {
           </div>
           <div>
             <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.25rem; display: block;">Firebase Web API Key</label>
-            <input type="password" id="firebase-api-key" class="form-input" placeholder="contoh: AIzaSyD..." value="${escapeHtml(currentFb.apiKey)}">
+            <input type="text" id="firebase-api-key" class="form-input" placeholder="contoh: AIzaSyD..." value="${escapeHtml(currentFb.apiKey)}">
+            <p style="font-size: 0.6875rem; color: #3B82F6; margin-top: 0.35rem;">
+              <a href="https://console.firebase.google.com/project/${escapeHtml(currentFb.projectId || 'portal-yiqul-db')}/firestore" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">
+                🔗 Buka Firestore Console Project Ini (Pastikan Database Dibuat) ↗
+              </a>
+            </p>
           </div>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
             <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); min-width: 100px;">Tipe Database:</label>
@@ -3912,6 +3981,50 @@ function initAdminPanel() {
 
 
 
+let typewriterTimeoutId = null;
+
+function startTypewriterAnimation(phrases) {
+  if (typeof window === 'undefined') return;
+  if (typewriterTimeoutId) {
+    clearTimeout(typewriterTimeoutId);
+    typewriterTimeoutId = null;
+  }
+
+  const el = document.getElementById('hero-typewriter-text');
+  if (!el || !phrases || phrases.length === 0) return;
+
+  let phraseIndex = 0;
+  let charIndex = phrases[0].length;
+  let isDeleting = true;
+
+  function loop() {
+    const current = phrases[phraseIndex % phrases.length];
+
+    if (isDeleting) {
+      charIndex--;
+      el.textContent = current.substring(0, charIndex);
+    } else {
+      charIndex++;
+      el.textContent = current.substring(0, charIndex);
+    }
+
+    let speed = isDeleting ? 38 : 75;
+
+    if (!isDeleting && charIndex === current.length) {
+      speed = 2500;
+      isDeleting = true;
+    } else if (isDeleting && charIndex === 0) {
+      isDeleting = false;
+      phraseIndex++;
+      speed = 380;
+    }
+
+    typewriterTimeoutId = setTimeout(loop, speed);
+  }
+
+  typewriterTimeoutId = setTimeout(loop, 2200);
+}
+
 /**
  * Render seluruh elemen Hero & Floating Navbar di Landing Page
  */
@@ -3922,6 +4035,7 @@ function renderLandingHero() {
   const branding = getBranding();
   const allApps = getAllApps();
   const previewApps = allApps.slice(0, 6);
+  const orgName = branding.organizationName || 'Yayasan Islam Qudwatul Ummah';
 
   const directLogo = branding.logoUrl ? convertGoogleDriveToDirectLink(branding.logoUrl) : '';
 
@@ -3985,7 +4099,9 @@ function renderLandingHero() {
       <!-- Main Split Headline (Sans + Serif Italic Accent) -->
       <h1 class="landing-headline">
         Pusat Komando & Portal Navigasi Digital<br>
-        <span class="headline-serif-italic">${escapeHtml(branding.organizationName || 'Yayasan Islam Qudwatul Ummah')}</span>
+        <span class="headline-serif-italic">
+          <span id="hero-typewriter-text" class="typewriter-text">${escapeHtml(orgName)}</span><span class="typewriter-cursor" aria-hidden="true">|</span>
+        </span>
       </h1>
 
       <!-- Subtitle Description -->
@@ -4072,6 +4188,16 @@ function renderLandingHero() {
   if (window.lucide && typeof window.lucide.createIcons === 'function') {
     window.lucide.createIcons();
   }
+
+  // Mulai animasi Typewriter teks berputar terus menerus
+  const phrases = [
+    orgName,
+    'Ekosistem Akademik & Tahfidz Quran',
+    'Sistem Keuangan & Billing SPP Santri',
+    'Portal Asatidz, Santri & Wali Murid',
+    'Navigasi 18+ Sistem Terintegrasi'
+  ];
+  startTypewriterAnimation(phrases);
 }
 
 
