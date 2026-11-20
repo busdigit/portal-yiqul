@@ -642,6 +642,36 @@ function deleteApp(id) {
 }
 
 /**
+ * Memindahkan urutan aplikasi ke atas atau ke bawah
+ * @param {string} id - ID aplikasi
+ * @param {'up'|'down'} direction - Arah perpindahan
+ * @returns {Array} Daftar aplikasi terbaru setelah dipindah
+ */
+function reorderApp(id, direction) {
+  const apps = getAllApps();
+  const index = apps.findIndex(a => a.id === id);
+  if (index === -1) return apps;
+
+  const targetIndex = direction === 'up' ? index - 1 : index + 1;
+  if (targetIndex < 0 || targetIndex >= apps.length) {
+    return apps; // Sudah di paling atas atau paling bawah
+  }
+
+  // Tukar posisi elemen dalam array
+  const temp = apps[index];
+  apps[index] = apps[targetIndex];
+  apps[targetIndex] = temp;
+
+  // Sinkronkan nilai displayOrder
+  apps.forEach((app, idx) => {
+    app.displayOrder = idx + 1;
+  });
+
+  saveAllApps(apps);
+  return apps;
+}
+
+/**
  * Mengambil daftar ID aplikasi favorit
  * @returns {Array<string>}
  */
@@ -904,6 +934,30 @@ function deleteBanner(id) {
   if (banners.length === initialLength) return false;
   saveBanners(banners);
   return true;
+}
+
+/**
+ * Memindahkan urutan banner ke atas atau ke bawah
+ * @param {string} id - ID banner
+ * @param {'up'|'down'} direction - Arah perpindahan
+ * @returns {Array} Daftar banner terbaru
+ */
+function reorderBanner(id, direction) {
+  const banners = getBanners();
+  const index = banners.findIndex(b => b.id === id);
+  if (index === -1) return banners;
+
+  const targetIndex = direction === 'up' ? index - 1 : index + 1;
+  if (targetIndex < 0 || targetIndex >= banners.length) {
+    return banners;
+  }
+
+  const temp = banners[index];
+  banners[index] = banners[targetIndex];
+  banners[targetIndex] = temp;
+
+  saveBanners(banners);
+  return banners;
 }
 
 /* ==========================================================================
@@ -3060,7 +3114,7 @@ function renderTabApps(container) {
           </h4>
         </div>
         <div class="admin-items-scroll">
-          ${allApps.map(app => `
+          ${allApps.map((app, idx) => `
             <div class="admin-item-row">
               <div class="admin-item-thumb">
                 ${app.customIconUrl ? `<img src="${app.customIconUrl}" alt="${app.title}" />` : `<i data-lucide="${app.iconName || 'Globe'}" width="20" height="20"></i>`}
@@ -3069,7 +3123,13 @@ function renderTabApps(container) {
                 <strong>${escapeHtml(app.title)}</strong>
                 <span style="font-size: 0.6875rem; color: var(--text-muted);">${escapeHtml(app.targetUrl)}</span>
               </div>
-              <div style="display: flex; gap: 0.25rem;">
+              <div style="display: flex; gap: 0.25rem; align-items: center;">
+                <button type="button" class="btn-icon btn-move-app-up" data-app-id="${app.id}" title="Pindahkan ke Atas" ${idx === 0 ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+                  <i data-lucide="arrow-up" width="14" height="14"></i>
+                </button>
+                <button type="button" class="btn-icon btn-move-app-down" data-app-id="${app.id}" title="Pindahkan ke Bawah" ${idx === allApps.length - 1 ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+                  <i data-lucide="arrow-down" width="14" height="14"></i>
+                </button>
                 <button type="button" class="btn-icon btn-edit-app-item" data-app-id="${app.id}" title="Edit">
                   <i data-lucide="pencil" width="14" height="14"></i>
                 </button>
@@ -3178,6 +3238,23 @@ function renderTabApps(container) {
     });
   });
 
+  // Bind Pindahkan Posisi Aplikasi (Move Up & Down)
+  container.querySelectorAll('.btn-move-app-up').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const appId = btn.getAttribute('data-app-id');
+      reorderApp(appId, 'up');
+      renderTabApps(container);
+    });
+  });
+
+  container.querySelectorAll('.btn-move-app-down').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const appId = btn.getAttribute('data-app-id');
+      reorderApp(appId, 'down');
+      renderTabApps(container);
+    });
+  });
+
   container.querySelectorAll('.btn-delete-app-item').forEach(btn => {
     btn.addEventListener('click', () => {
       const appId = btn.getAttribute('data-app-id');
@@ -3253,7 +3330,7 @@ function renderTabBanners(container) {
           Banner Terpasang (${banners.length})
         </h4>
         <div class="admin-items-scroll">
-          ${banners.map(b => `
+          ${banners.map((b, idx) => `
             <div class="admin-item-row">
               <div class="admin-item-thumb" style="width: 72px; height: 48px; border-radius: 6px;">
                 <img src="${b.imageUrl}" alt="${b.title}" style="width: 100%; height: 100%; object-fit: cover;" />
@@ -3264,7 +3341,13 @@ function renderTabBanners(container) {
                   ${b.isActive ? '🟢 Ditampilkan di Beranda' : '⚪ Nonaktif'}
                 </span>
               </div>
-              <div style="display: flex; gap: 0.25rem;">
+              <div style="display: flex; gap: 0.25rem; align-items: center;">
+                <button type="button" class="btn-icon btn-move-banner-up" data-banner-id="${b.id}" title="Pindahkan ke Atas" ${idx === 0 ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+                  <i data-lucide="arrow-up" width="14" height="14"></i>
+                </button>
+                <button type="button" class="btn-icon btn-move-banner-down" data-banner-id="${b.id}" title="Pindahkan ke Bawah" ${idx === banners.length - 1 ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+                  <i data-lucide="arrow-down" width="14" height="14"></i>
+                </button>
                 <button type="button" class="btn-icon btn-edit-banner-item" data-banner-id="${b.id}" title="Edit">
                   <i data-lucide="pencil" width="14" height="14"></i>
                 </button>
@@ -3341,6 +3424,23 @@ function renderTabBanners(container) {
       renderTabBanners(container);
     });
   }
+
+  // Bind Pindahkan Posisi Banner (Move Up & Down)
+  container.querySelectorAll('.btn-move-banner-up').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const bannerId = btn.getAttribute('data-banner-id');
+      reorderBanner(bannerId, 'up');
+      renderTabBanners(container);
+    });
+  });
+
+  container.querySelectorAll('.btn-move-banner-down').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const bannerId = btn.getAttribute('data-banner-id');
+      reorderBanner(bannerId, 'down');
+      renderTabBanners(container);
+    });
+  });
 
   container.querySelectorAll('.btn-edit-banner-item').forEach(btn => {
     btn.addEventListener('click', () => {
