@@ -1886,6 +1886,36 @@ body.view-portal #portal-view-container {
   color: #6EE7B7;
   text-shadow: 0 0 35px rgba(16, 185, 129, 0.4);
   display: inline-block;
+  min-height: 1.25em;
+}
+
+/* Continuous Typewriter Effect & Glowing Cursor */
+.typewriter-text {
+  display: inline;
+  border-bottom: 2px solid rgba(52, 211, 153, 0.35);
+  padding-bottom: 2px;
+}
+
+.typewriter-cursor {
+  display: inline-block;
+  margin-left: 3px;
+  font-style: normal;
+  font-weight: 300;
+  color: #34D399;
+  text-shadow: 0 0 14px rgba(52, 211, 153, 0.9);
+  animation: typewriter-blink 0.85s infinite ease-in-out;
+  vertical-align: baseline;
+}
+
+@keyframes typewriter-blink {
+  0%, 100% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+  50% {
+    opacity: 0;
+    transform: scaleY(0.75);
+  }
 }
 
 .landing-subheadline {
