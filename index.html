@@ -17,14 +17,15 @@
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
   <link rel="icon" type="image/svg+xml" href="./assets/icons/icon.svg">
 
-  <!-- Stylesheet -->
+  <!-- Stylesheet (Root Bundle + Modular Fallback) -->
+  <link rel="stylesheet" href="./bundle.css">
   <link rel="stylesheet" href="src/styles/style.css">
   <link rel="stylesheet" href="src/styles/landing.css">
 
   <!-- Lucide Icons Lightweight Script -->
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
+<body class="view-landing">
   <!-- ======================================================================
        VIEW 1: LANDING PAGE (TECHWITPRO STYLE)
        ====================================================================== -->
@@ -300,8 +301,8 @@
   </footer>
   </div> <!-- End of #portal-view-container -->
 
-  <!-- Main JavaScript App -->
+  <!-- Main JavaScript App (Root Bundle + Modular Fallback) -->
+  <script src="./bundle.js" defer></script>
   <script type="module" src="src/app.js"></script>
-  <script type="module" src="./src/app.js"></script>
 </body>
 </html>
