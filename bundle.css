@@ -696,6 +696,18 @@ html.dark .status-dot.new {
   color: #93C5FD;
 }
 
+.status-dot.locked {
+  background-color: #FEF3C7;
+  color: #B45309;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+html.dark .status-dot.locked {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #FCD34D;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
 .btn-favorite {
   background: none;
   border: none;
@@ -790,6 +802,37 @@ html.dark .card-category-tag {
   background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
   color: #FFFFFF;
   border-color: var(--color-primary-600);
+}
+
+.is-locked-card {
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.is-locked-card:hover {
+  border-color: #F59E0B;
+}
+
+.btn-launch.btn-launch-locked {
+  background: linear-gradient(135deg, #D97706, #B45309);
+  color: #FFFFFF;
+  border-color: #B45309;
+}
+
+.btn-launch.btn-launch-locked:hover {
+  background: linear-gradient(135deg, #B45309, #92400E);
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35);
+}
+
+.btn-launch.btn-launch-admin-unlocked {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.btn-icon.btn-toggle-lock {
+  transition: all var(--transition-fast);
+}
+
+.btn-icon.btn-toggle-lock:hover {
+  transform: scale(1.1);
 }
 
 .card-mode-badge {

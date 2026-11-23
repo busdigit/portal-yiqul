@@ -9,36 +9,48 @@ echo    Target: https://github.com/busdigit/portal-yiqul
 echo ======================================================================
 echo.
 
-:: 1. Cek apakah Git sudah terinstall
+:: 0. Re-build bundle terbaru sebelum push
+echo [*] Melakukan re-bundle otomatis (bundle.css & bundle.js)...
+call node tools/build.js
+echo.
+
+:: 1. Deteksi Git (System PATH atau GitHub Desktop embedded)
+set "GIT_CMD=git"
 where git >nul 2>nul
 if %errorlevel% neq 0 (
+    echo [*] Mencari Git bawaan GitHub Desktop...
+    for /d %%D in ("%LOCALAPPDATA%\GitHubDesktop\app-*") do (
+        if exist "%%D\resources\app\git\cmd\git.exe" (
+            set "GIT_CMD=%%D\resources\app\git\cmd\git.exe"
+        )
+    )
+)
+
+"%GIT_CMD%" --version >nul 2>nul
+if %errorlevel% neq 0 (
     color 0C
-    echo [ERROR] Git belum terdeteksi di laptop/PC Anda!
+    echo [ERROR] Git belum terpasang di sistem PATH!
     echo.
-    echo Supaya Anda bisa "TINGGAL PUSH" tanpa perlu copas file satu per satu,
-    echo Anda harus menginstall Git for Windows terlebih dahulu (cukup 1x seumur hidup).
+    echo Cara termudah:
+    echo 1. Anda punya aplikasi GitHub Desktop di taskbar (logo kucing hitam).
+    echo    Buka GitHub Desktop -> File -> Add Local Repository -> pilih folder ini
+    echo    Lalu klik "Commit to main" dan klik "Push origin"!
     echo.
-    echo 1. Unduh Git di: https://git-scm.com/download/win
-    echo    (Pilih "Click here to download" versi 64-bit Standalone Installer)
-    echo 2. Buka filenya dan klik "Next" sampai selesai.
-    echo 3. Setelah selesai, jalankan file push-ke-github.bat ini lagi!
-    echo.
-    echo Membuka link download Git di browser Anda sekarang...
-    start https://git-scm.com/download/win
+    echo 2. ATAU install Git resmi dari: https://git-scm.com/download/win
     echo.
     pause
     exit /b 1
 )
 
-echo [1/5] Git terdeteksi dengan sukses!
-git --version
+echo [1/5] Git siap digunakan: %GIT_CMD%
+"%GIT_CMD%" --version
 echo.
 
 :: 2. Inisialisasi Git jika belum ada
 if not exist ".git" (
     echo [2/5] Menginisialisasi repositori Git lokal...
-    git init
-    git branch -M main
+    "%GIT_CMD%" init
+    "%GIT_CMD%" branch -M main
 ) else (
     echo [2/5] Repositori Git lokal sudah siap.
 )
@@ -46,33 +58,33 @@ echo.
 
 :: 3. Setup Remote Origin ke busdigit/portal-yiqul
 echo [3/5] Menghubungkan ke https://github.com/busdigit/portal-yiqul.git...
-git remote get-url origin >nul 2>nul
+"%GIT_CMD%" remote get-url origin >nul 2>nul
 if %errorlevel% neq 0 (
-    git remote add origin https://github.com/busdigit/portal-yiqul.git
+    "%GIT_CMD%" remote add origin https://github.com/busdigit/portal-yiqul.git
 ) else (
-    git remote set-url origin https://github.com/busdigit/portal-yiqul.git
+    "%GIT_CMD%" remote set-url origin https://github.com/busdigit/portal-yiqul.git
 )
 echo Remote origin terkonfigurasi.
 echo.
 
-:: 4. Tambahkan seluruh berkas (termasuk src/, assets/, .nojekyll)
-echo [4/5] Memindai dan mengemas seluruh folder & file...
-git add -A
-git commit -m "feat: deploy lengkap portal yiqul PWA (css, js, assets, nojekyll)"
+:: 4. Tambahkan seluruh berkas
+echo [4/5] Mengemas bundle.css, bundle.js, index.html, src/, assets/, .nojekyll...
+"%GIT_CMD%" add -A
+"%GIT_CMD%" commit -m "feat: deploy portal yiqul all-in-one root bundle"
 echo.
 
 :: 5. Push ke GitHub
 echo [5/5] Mengunggah (PUSH) ke GitHub...
-echo (Jika muncul jendela login GitHub di layar, klik 'Sign in with your browser')
+echo (Jika muncul popup otentikasi GitHub, klik 'Sign in with your browser')
 echo.
-git push -u origin main
+"%GIT_CMD%" push -u origin main
 
 if %errorlevel% equ 0 (
     color 0A
     echo.
     echo ======================================================================
     echo  ALHAMDULILLAH! PUSH BERHASIL 100%!
-    echo  Semua file, folder src/, assets/, styling CSS, dan JS sudah di GitHub!
+    echo  Semua file bundle.css, bundle.js, dan index.html sudah di GitHub!
     echo.
     echo  Silakan buka: https://busdigit.github.io/portal-yiqul/
     echo  (Tekan Ctrl + F5 di browser untuk melihat tampilan utuh aplikasi)
@@ -80,24 +92,23 @@ if %errorlevel% equ 0 (
 ) else (
     color 0E
     echo.
-    echo [CATATAN] Jika push ditolak karena ada perbedaan file di GitHub:
-    echo Mencoba menyelaraskan branch dengan git push --force...
+    echo [CATATAN] Mencoba sinkronisasi branch dengan git push --force...
     echo.
-    git push -u origin main --force
+    "%GIT_CMD%" push -u origin main --force
     if %errorlevel% equ 0 (
         color 0A
         echo.
         echo ======================================================================
         echo  ALHAMDULILLAH! PUSH FORCE BERHASIL 100%!
-        echo  Semua file & folder sudah sinkron dengan GitHub!
+        echo  Semua file bundle dan tampilan utuh sudah terpasang di GitHub!
         echo  Silakan buka: https://busdigit.github.io/portal-yiqul/
         echo  (Tekan Ctrl + F5 di browser)
         echo ======================================================================
     ) else (
         color 0C
         echo.
-        echo [GAGAL] Push gagal. Pastikan Anda sudah login ke akun GitHub 'busdigit'
-        echo di browser atau masukkan Personal Access Token jika diminta.
+        echo [GAGAL] Push gagal. Silakan gunakan GitHub Desktop untuk push,
+        echo atau pastikan sudah login ke akun 'busdigit'.
     )
 )
 

@@ -576,6 +576,7 @@ function addApp(appData) {
     rolesAllowed: Array.isArray(appData.rolesAllowed) ? appData.rolesAllowed : ['public'],
     displayOrder: Number(appData.displayOrder) || (apps.length + 1),
     isFeatured: Boolean(appData.isFeatured),
+    isLocked: Boolean(appData.isLocked),
     updatedAt: new Date().toISOString()
   };
 
@@ -669,6 +670,31 @@ function reorderApp(id, direction) {
 
   saveAllApps(apps);
   return apps;
+}
+
+/**
+ * Toggle status kunci (lock / unlock) sebuah aplikasi
+ * @param {string} id - ID aplikasi
+ * @returns {Object|null} Aplikasi yang diperbarui
+ */
+function toggleAppLock(id) {
+  const apps = getAllApps();
+  const index = apps.findIndex(a => a.id === id);
+  if (index === -1) return null;
+  apps[index].isLocked = !apps[index].isLocked;
+  apps[index].updatedAt = new Date().toISOString();
+  saveAllApps(apps);
+  return apps[index];
+}
+
+/**
+ * Verifikasi PIN untuk membuka akses aplikasi terkunci
+ * @param {string} inputPin
+ * @returns {boolean}
+ */
+function verifyAppAccessPin(inputPin) {
+  const currentPin = getAdminPin();
+  return String(inputPin).trim() === String(currentPin).trim();
 }
 
 /**
@@ -2072,6 +2098,7 @@ function getCurrentFilterState() {
 
 
 
+
 /**
  * Render string HTML kartu aplikasi Bento
  * @param {Object} app - Data aplikasi Yiqul
@@ -2083,6 +2110,8 @@ function renderAppCard(app, isFav = false) {
   const safeTitle = escapeHtml(app.title);
   const safeDesc = escapeHtml(app.shortDescription || 'Aplikasi resmi ekosistem Yayasan Islam Qudwatul Ummah.');
   const icon = escapeHtml(app.iconName || 'Globe');
+  const isAdmin = isAdminLoggedIn();
+  const isLocked = Boolean(app.isLocked);
 
   // Avatar icon: Gunakan gambar logo kustom (Google Drive / upload) jika ada
   let avatarMarkup = '';
@@ -2113,6 +2142,12 @@ function renderAppCard(app, isFav = false) {
     statusBadgeHtml = `<span class="status-dot" title="Aplikasi Segera Hadir">⚪ Segera</span>`;
   }
 
+  // Lock status badge
+  let lockBadgeHtml = '';
+  if (isLocked) {
+    lockBadgeHtml = `<span class="status-dot locked" title="Aplikasi Terkunci: Butuh PIN Akses"><i data-lucide="lock" width="12" height="12"></i> Terkunci</span>`;
+  }
+
   // Favorite button
   const favActiveClass = isFav ? 'favorited' : '';
   const favIconFill = isFav ? 'fill: var(--color-accent-amber); color: var(--color-accent-amber);' : '';
@@ -2121,18 +2156,35 @@ function renderAppCard(app, isFav = false) {
   let launchActionHtml = '';
   let modeBadgeText = 'Tab Baru';
 
-  if (app.targetMode === 'iframe') {
+  if (isLocked && !isAdmin) {
+    // Aplikasi Terkunci & Pengguna Bukan Admin: Wajib Masukkan PIN
+    modeBadgeText = 'Perlu PIN';
+    launchActionHtml = `
+      <button 
+        type="button" 
+        class="btn-launch btn-launch-locked" 
+        data-action="prompt-app-lock" 
+        data-app-id="${app.id}"
+        aria-label="Buka aplikasi terkunci ${safeTitle}"
+        title="Aplikasi Terkunci: Masukkan PIN Akses"
+      >
+        <span>Buka Terkunci</span>
+        <i data-lucide="lock" width="14" height="14"></i>
+      </button>
+    `;
+  } else if (app.targetMode === 'iframe') {
     modeBadgeText = 'Modal Window';
     launchActionHtml = `
       <button 
         type="button" 
-        class="btn-launch" 
+        class="btn-launch ${isLocked ? 'btn-launch-admin-unlocked' : ''}" 
         data-action="open-modal" 
         data-app-id="${app.id}"
         aria-label="Buka aplikasi ${safeTitle} di modal"
+        ${isLocked ? 'title="Akses Terbuka Khusus Admin"' : ''}
       >
         <span>Buka Aplikasi</span>
-        <i data-lucide="maximize-2" width="14" height="14"></i>
+        <i data-lucide="${isLocked ? 'unlock' : 'maximize-2'}" width="14" height="14"></i>
       </button>
     `;
   } else if (app.targetMode === '_self') {
@@ -2141,11 +2193,12 @@ function renderAppCard(app, isFav = false) {
       <a 
         href="${safeUrl}" 
         target="_self" 
-        class="btn-launch"
+        class="btn-launch ${isLocked ? 'btn-launch-admin-unlocked' : ''}"
         aria-label="Buka aplikasi ${safeTitle}"
+        ${isLocked ? 'title="Akses Terbuka Khusus Admin"' : ''}
       >
         <span>Buka Aplikasi</span>
-        <i data-lucide="arrow-right" width="14" height="14"></i>
+        <i data-lucide="${isLocked ? 'unlock' : 'arrow-right'}" width="14" height="14"></i>
       </a>
     `;
   } else {
@@ -2156,22 +2209,24 @@ function renderAppCard(app, isFav = false) {
         href="${safeUrl}" 
         target="_blank" 
         rel="noopener noreferrer" 
-        class="btn-launch"
+        class="btn-launch ${isLocked ? 'btn-launch-admin-unlocked' : ''}"
         aria-label="Buka aplikasi ${safeTitle} di tab baru"
+        ${isLocked ? 'title="Akses Terbuka Khusus Admin"' : ''}
       >
         <span>Buka Aplikasi</span>
-        <i data-lucide="external-link" width="14" height="14"></i>
+        <i data-lucide="${isLocked ? 'unlock' : 'external-link'}" width="14" height="14"></i>
       </a>
     `;
   }
 
   return `
-    <article class="app-card fade-in" id="card-${app.id}" data-category="${escapeHtml(app.category)}">
+    <article class="app-card fade-in ${isLocked ? 'is-locked-card' : ''}" id="card-${app.id}" data-category="${escapeHtml(app.category)}">
       <div>
-        <!-- Card Top: Avatar, Status, Favorite -->
+        <!-- Card Top: Avatar, Status, Lock, Favorite -->
         <div class="card-top">
           ${avatarMarkup}
           <div class="card-badges">
+            ${lockBadgeHtml}
             ${statusBadgeHtml}
             <button 
               type="button" 
@@ -2208,7 +2263,7 @@ function renderAppCard(app, isFav = false) {
       <div class="card-footer">
         ${launchActionHtml}
         <span class="card-mode-badge" title="Mode pembukaan: ${modeBadgeText}">
-          <i data-lucide="layers" width="12" height="12"></i> ${modeBadgeText}
+          <i data-lucide="${isLocked && !isAdmin ? 'shield-alert' : 'layers'}" width="12" height="12"></i> ${modeBadgeText}
         </span>
       </div>
     </article>
@@ -2234,6 +2289,50 @@ function renderAppCard(app, isFav = false) {
 
 let onOpenModalCallback = null;
 let onEditAppCallback = null;
+
+/**
+ * Buka Modal PIN Akses Aplikasi Terkunci
+ * @param {string} appId
+ */
+function openAppLockModal(appId) {
+  const app = getAppById(appId);
+  if (!app) return;
+
+  const modalBackdrop = document.getElementById('app-lock-modal');
+  const titleEl = document.getElementById('lock-modal-app-title');
+  const subEl = document.getElementById('lock-modal-subheading');
+  const idInput = document.getElementById('lock-modal-app-id');
+  const pinInput = document.getElementById('app-lock-pin-input');
+  const errEl = document.getElementById('app-lock-error');
+
+  if (titleEl) titleEl.textContent = `Buka: ${app.title}`;
+  if (subEl) subEl.textContent = `Aplikasi ${app.title} Terkunci`;
+  if (idInput) idInput.value = app.id;
+  if (pinInput) {
+    pinInput.value = '';
+    setTimeout(() => pinInput.focus(), 100);
+  }
+  if (errEl) {
+    errEl.style.display = 'none';
+    errEl.textContent = '';
+  }
+
+  if (modalBackdrop) {
+    modalBackdrop.classList.add('open');
+    modalBackdrop.setAttribute('aria-hidden', 'false');
+  }
+}
+
+/**
+ * Tutup Modal PIN Akses Aplikasi Terkunci
+ */
+function closeAppLockModal() {
+  const modalBackdrop = document.getElementById('app-lock-modal');
+  if (modalBackdrop) {
+    modalBackdrop.classList.remove('open');
+    modalBackdrop.setAttribute('aria-hidden', 'true');
+  }
+}
 
 /**
  * Render Skeleton Loading State (6 shimmer cards)
@@ -2453,7 +2552,75 @@ function initBentoGridEvents({ onOpenModal, onEditApp }) {
       resetFilters();
       return;
     }
+
+    // 5. Prompt PIN Akses Aplikasi Terkunci
+    const lockBtn = e.target.closest('[data-action="prompt-app-lock"]');
+    if (lockBtn) {
+      e.preventDefault();
+      const appId = lockBtn.getAttribute('data-app-id');
+      if (appId) {
+        openAppLockModal(appId);
+      }
+      return;
+    }
   });
+
+  // Setup form & close events untuk Modal PIN Akses Aplikasi
+  const lockForm = document.getElementById('app-lock-form');
+  if (lockForm && !lockForm.__hasLockSubmitListener) {
+    lockForm.__hasLockSubmitListener = true;
+    lockForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const appId = document.getElementById('lock-modal-app-id').value;
+      const pinInput = document.getElementById('app-lock-pin-input');
+      const errEl = document.getElementById('app-lock-error');
+      const inputPin = pinInput ? pinInput.value : '';
+
+      if (verifyAppAccessPin(inputPin)) {
+        closeAppLockModal();
+        const app = getAppById(appId);
+        if (app) {
+          if (app.targetMode === 'iframe' && typeof onOpenModalCallback === 'function') {
+            onOpenModalCallback(app);
+          } else if (app.targetMode === '_self') {
+            window.location.href = app.targetUrl;
+          } else {
+            window.open(app.targetUrl, '_blank', 'noopener,noreferrer');
+          }
+        }
+      } else {
+        if (errEl) {
+          errEl.textContent = '❌ PIN Akses Salah! Silakan coba lagi.';
+          errEl.style.display = 'block';
+        }
+        if (pinInput) {
+          pinInput.select();
+        }
+      }
+    });
+  }
+
+  const closeLockBtn = document.getElementById('close-lock-modal-btn');
+  if (closeLockBtn && !closeLockBtn.__hasListener) {
+    closeLockBtn.__hasListener = true;
+    closeLockBtn.addEventListener('click', closeAppLockModal);
+  }
+
+  const cancelLockBtn = document.getElementById('cancel-lock-modal-btn');
+  if (cancelLockBtn && !cancelLockBtn.__hasListener) {
+    cancelLockBtn.__hasListener = true;
+    cancelLockBtn.addEventListener('click', closeAppLockModal);
+  }
+
+  const lockBackdrop = document.getElementById('app-lock-modal');
+  if (lockBackdrop && !lockBackdrop.__hasBackdropListener) {
+    lockBackdrop.__hasBackdropListener = true;
+    lockBackdrop.addEventListener('click', (e) => {
+      if (e.target === lockBackdrop) {
+        closeAppLockModal();
+      }
+    });
+  }
 }
 
 
@@ -3097,6 +3264,18 @@ function renderTabApps(container) {
             </div>
           </div>
 
+          <!-- Hak Akses / Proteksi Kunci Aplikasi -->
+          <div class="form-group">
+            <label class="form-label" for="admin-form-app-locked">Hak Akses & Proteksi Aplikasi</label>
+            <select id="admin-form-app-locked" class="form-select">
+              <option value="false">🔓 Terbuka untuk Umum (Semua Bisa Buka)</option>
+              <option value="true">🔒 Terkunci (Khusus Admin / Butuh PIN Akses)</option>
+            </select>
+            <span style="font-size: 0.6875rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">
+              Jika dikunci, pengguna harus memasukkan PIN Yayasan (atau login Admin) untuk membuka aplikasi ini.
+            </span>
+          </div>
+
           <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem;">
             <button type="button" id="admin-app-reset-btn" class="btn-secondary">Reset Form</button>
             <button type="submit" class="btn-primary" id="admin-app-save-btn">
@@ -3124,6 +3303,9 @@ function renderTabApps(container) {
                 <span style="font-size: 0.6875rem; color: var(--text-muted);">${escapeHtml(app.targetUrl)}</span>
               </div>
               <div style="display: flex; gap: 0.25rem; align-items: center;">
+                <button type="button" class="btn-icon btn-toggle-lock" data-app-id="${app.id}" title="${app.isLocked ? 'Status Terkunci: Butuh PIN (Klik untuk Buka Akses)' : 'Status Terbuka: Umum (Klik untuk Kunci Akses)'}" style="${app.isLocked ? 'color: #F59E0B; background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.35);' : 'color: var(--text-muted);'}">
+                  <i data-lucide="${app.isLocked ? 'lock' : 'unlock'}" width="14" height="14"></i>
+                </button>
                 <button type="button" class="btn-icon btn-move-app-up" data-app-id="${app.id}" title="Pindahkan ke Atas" ${idx === 0 ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
                   <i data-lucide="arrow-up" width="14" height="14"></i>
                 </button>
@@ -3172,6 +3354,7 @@ function renderTabApps(container) {
       const shortDescription = document.getElementById('admin-form-app-desc').value.trim();
       const targetMode = document.getElementById('admin-form-app-target').value;
       const status = document.getElementById('admin-form-app-status').value;
+      const isLocked = document.getElementById('admin-form-app-locked').value === 'true';
 
       if (!isValidUrl(targetUrl)) {
         alert('URL tujuan tidak valid! Wajib berawalan https:// atau http://');
@@ -3187,7 +3370,8 @@ function renderTabApps(container) {
           customIconUrl: currentUploadedAppLogo,
           shortDescription,
           targetMode,
-          status
+          status,
+          isLocked
         });
       } else {
         addApp({
@@ -3198,7 +3382,8 @@ function renderTabApps(container) {
           customIconUrl: currentUploadedAppLogo,
           shortDescription,
           targetMode,
-          status
+          status,
+          isLocked
         });
       }
 
@@ -3212,6 +3397,8 @@ function renderTabApps(container) {
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
       currentUploadedAppLogo = '';
+      const lockSelect = document.getElementById('admin-form-app-locked');
+      if (lockSelect) lockSelect.value = 'false';
       renderTabApps(container);
     });
   }
@@ -3231,10 +3418,21 @@ function renderTabApps(container) {
       document.getElementById('admin-form-app-desc').value = app.shortDescription || '';
       document.getElementById('admin-form-app-target').value = app.targetMode || '_blank';
       document.getElementById('admin-form-app-status').value = app.status || 'active';
+      const lockSelect = document.getElementById('admin-form-app-locked');
+      if (lockSelect) lockSelect.value = app.isLocked ? 'true' : 'false';
       document.getElementById('app-editor-heading').textContent = `Edit: ${app.title}`;
 
       currentUploadedAppLogo = app.customIconUrl || '';
       if (appLogoUploader) appLogoUploader.setValue(currentUploadedAppLogo);
+    });
+  });
+
+  // Bind Toggle Kunci / Buka Akses Aplikasi
+  container.querySelectorAll('.btn-toggle-lock').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const appId = btn.getAttribute('data-app-id');
+      toggleAppLock(appId);
+      renderTabApps(container);
     });
   });
 

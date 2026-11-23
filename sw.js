@@ -3,7 +3,7 @@
  * Portal Yiqul - Unified Digital Ecosystem Launcher
  */
 
-const CACHE_NAME = 'yiqul-portal-v3';
+const CACHE_NAME = 'yiqul-portal-v4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
