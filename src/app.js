@@ -22,6 +22,7 @@ import { renderLandingHero } from './components/LandingHero.js';
 import { renderLandingFeatures } from './components/LandingFeatures.js';
 import { initPwaInstallPrompt } from './components/PwaInstallPrompt.js';
 import { initSpmbModal } from './components/SpmbModal.js';
+import { initJadwalModal } from './components/JadwalModal.js';
 
 /**
  * Update rendering katalog Bento Grid berdasarkan filter saat ini
@@ -113,6 +114,9 @@ function bootstrap() {
 
   // 6b. Inisialisasi SPMB Online Modal & Pendaftaran Santri Baru
   initSpmbModal();
+
+  // 6c. Inisialisasi Jadwal & Agenda Kegiatan Modal
+  initJadwalModal();
 
   // 7. Inisialisasi Event Delegation Kartu Bento
   initBentoGridEvents({

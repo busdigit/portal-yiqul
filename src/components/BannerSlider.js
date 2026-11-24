@@ -48,6 +48,10 @@ export function renderBannerSlider() {
     (currentBanner.actionUrl && (currentBanner.actionUrl.includes('psb') || currentBanner.actionUrl === '#spmb')) ||
     (currentBanner.actionText && currentBanner.actionText.toLowerCase().includes('daftar'))
   );
+  const isJadwalAction = Boolean(
+    (currentBanner.actionUrl && (currentBanner.actionUrl.includes('jadwal') || currentBanner.actionUrl === '#jadwal')) ||
+    (currentBanner.actionText && currentBanner.actionText.toLowerCase().includes('jadwal'))
+  );
 
   container.innerHTML = `
     <div class="hero-image-banner-card fade-in" style="background-image: linear-gradient(to right, rgba(15, 23, 42, 0.88) 0%, rgba(15, 23, 42, 0.45) 100%), url('${safeImgUrl}');">
@@ -65,6 +69,11 @@ export function renderBannerSlider() {
             <button type="button" class="btn-primary banner-cta-btn" data-action="open-spmb">
               <span>${safeActionText}</span>
               <i data-lucide="arrow-right" width="16" height="16"></i>
+            </button>
+          ` : isJadwalAction ? `
+            <button type="button" class="btn-primary banner-cta-btn" data-action="open-jadwal" style="background: #10B981;">
+              <span>${safeActionText}</span>
+              <i data-lucide="calendar" width="16" height="16"></i>
             </button>
           ` : currentBanner.actionUrl ? `
             <a href="${safeActionUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary banner-cta-btn">
@@ -133,6 +142,11 @@ export function initBannerSlider() {
       if (spmbBtn) {
         e.preventDefault();
         window.dispatchEvent(new CustomEvent('yiqul:open-spmb'));
+      }
+      const jadwalBtn = e.target.closest('[data-action="open-jadwal"]');
+      if (jadwalBtn) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('yiqul:open-jadwal'));
       }
     });
   }

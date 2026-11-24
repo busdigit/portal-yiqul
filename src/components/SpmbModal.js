@@ -607,6 +607,9 @@ function bindSpmbEvents() {
 
       // Register new student into SPMB database
       registrationResult = registerNewStudent(spmbDraft);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('yiqul:spmb-updated', { detail: registrationResult }));
+      }
       currentStep = 4;
       renderSpmbModalContent();
     };

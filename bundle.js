@@ -1786,10 +1786,57 @@ const DEFAULT_BANNERS = [
     title: "Wisuda Tahfidz & Haflah Khotmil Quran",
     subtitle: "Apresiasi setoran mutaba'ah hafalan santri dan pembagian sanad tahfidz.",
     imageUrl: "https://images.unsplash.com/photo-1542810634-71277d95dcbb?q=80&w=1200&auto=format&fit=crop",
-    actionUrl: "https://tahfidz.qudwatulummah.sch.id",
+    actionUrl: "#jadwal",
     actionText: "Lihat Jadwal ↗",
     isActive: true,
     displayOrder: 2
+  }
+];
+
+const DEFAULT_SCHEDULES = [
+  {
+    id: "sched-01",
+    title: "Wisuda Tahfidz & Haflah Khotmil Quran",
+    category: "Tahfidz",
+    date: "2026-12-20",
+    time: "08:00 - 12:00 WIB",
+    location: "Masjid Utama Pesantren Qudwatul Ummah",
+    description: "Apresiasi setoran mutaba'ah hafalan santri 30 Juz dan pembagian sanad tahfidz resmi bagi para penghafal Al-Qur'an.",
+    speakerOrHost: "Mudir Ponpes & Dewan Asatidz Tahfidz",
+    status: "upcoming"
+  },
+  {
+    id: "sched-02",
+    title: "Masa Pengenalan Lingkungan Santri (MPLS) 2026/2027",
+    category: "Akademik",
+    date: "2026-07-13",
+    time: "07:30 - 15:00 WIB",
+    location: "Kampus Terpadu Al-Qudwah Lebak",
+    description: "Orientasi pengenalan santri baru seluruh jenjang Day Care, RA/TK, SDT, SMPT, dan SMAT Al-Qudwah.",
+    speakerOrHost: "Panitia SPMB & OSIS/ISMA Qudwah",
+    status: "upcoming"
+  },
+  {
+    id: "sched-03",
+    title: "Munaqosyah Sanad Tahfidz Terbuka",
+    category: "Tahfidz",
+    date: "2026-12-05",
+    time: "08:30 - 15:30 WIB",
+    location: "Aula Serbaguna Yayasan",
+    description: "Ujian tahfidz terbuka di hadapan dewan penguji sanad jazariyyah dan disaksikan orang tua santri.",
+    speakerOrHost: "Lembaga Tahfidz & Penguji Al-Qur'an",
+    status: "upcoming"
+  },
+  {
+    id: "sched-04",
+    title: "Silaturahmi Akbar Wali Santri & Pembagian Rapor",
+    category: "Yayasan",
+    date: "2026-12-19",
+    time: "09:00 - 13:00 WIB",
+    location: "Auditorium Al-Qudwah",
+    description: "Pertemuan evaluasi perkembangan santri semester ganjil, pembagian rapor, dan penguatan sinergi rumah-sekolah.",
+    speakerOrHost: "Pimpinan Yayasan Islam Qudwatul Ummah",
+    status: "upcoming"
   }
 ];
 
@@ -1834,6 +1881,7 @@ const STORAGE_KEY_THEME = 'yiqul_theme_mode';
 const STORAGE_KEY_BRANDING = 'yiqul_portal_branding';
 const STORAGE_KEY_BANNERS = 'yiqul_portal_banners';
 const STORAGE_KEY_DOCUMENTS = 'yiqul_portal_documents';
+const STORAGE_KEY_SCHEDULES = 'yiqul_portal_schedules';
 const STORAGE_KEY_ROLE = 'yiqul_user_role';
 const STORAGE_KEY_ADMIN_PIN = 'yiqul_admin_pin';
 
@@ -2146,7 +2194,8 @@ function exportRegistryJson() {
     announcement: getAnnouncement(),
     branding: getBranding(),
     banners: getBanners(),
-    documents: getDocuments()
+    documents: getDocuments(),
+    schedules: getSchedules()
   };
   return JSON.stringify(payload, null, 2);
 }
@@ -2195,10 +2244,14 @@ function importRegistryJson(jsonString) {
       saveDocuments(data.documents);
     }
 
+    if (Array.isArray(data.schedules)) {
+      saveSchedules(data.schedules);
+    }
+
     return {
       success: true,
       count: validApps.length,
-      message: `Berhasil mengimpor ${validApps.length} aplikasi, branding, dan banner ke Portal Yiqul.`
+      message: `Berhasil mengimpor ${validApps.length} aplikasi, branding, banner, dan jadwal ke Portal Yiqul.`
     };
   } catch (e) {
     return {
@@ -2219,9 +2272,11 @@ function resetToDefault() {
   saveBranding(DEFAULT_BRANDING);
   saveBanners(DEFAULT_BANNERS);
   saveDocuments(DEFAULT_DOCUMENTS);
+  saveSchedules(DEFAULT_SCHEDULES);
   dispatchRegistryEvent('yiqul:registry-changed', { count: DEFAULT_APPS.length });
   dispatchRegistryEvent('yiqul:branding-changed', DEFAULT_BRANDING);
   dispatchRegistryEvent('yiqul:banners-changed', DEFAULT_BANNERS);
+  dispatchRegistryEvent('yiqul:schedules-changed', DEFAULT_SCHEDULES);
 }
 
 /**
@@ -2426,6 +2481,88 @@ function deleteDocument(id) {
   if (docs.length === initialLength) return false;
   saveDocuments(docs);
   return true;
+}
+
+/* ==========================================================================
+   SCHEDULES / JADWAL & AGENDA KEGIATAN MANAGEMENT
+   ========================================================================== */
+
+function getSchedules() {
+  const raw = getStorageItem(STORAGE_KEY_SCHEDULES);
+  if (!raw) {
+    saveSchedules(DEFAULT_SCHEDULES, false);
+    return [...DEFAULT_SCHEDULES];
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : [...DEFAULT_SCHEDULES];
+  } catch (e) {
+    return [...DEFAULT_SCHEDULES];
+  }
+}
+
+function saveSchedules(schedules, emitEvent = true) {
+  setStorageItem(STORAGE_KEY_SCHEDULES, JSON.stringify(schedules));
+  if (emitEvent) {
+    dispatchRegistryEvent('yiqul:schedules-changed', { count: schedules.length });
+  }
+}
+
+function addSchedule(data) {
+  const list = getSchedules();
+  const item = {
+    id: data.id || `sched-${Date.now()}`,
+    title: String(data.title || '').trim(),
+    category: String(data.category || 'Tahfidz').trim(),
+    date: String(data.date || '').trim(),
+    time: String(data.time || '').trim(),
+    location: String(data.location || '').trim(),
+    description: String(data.description || '').trim(),
+    speakerOrHost: String(data.speakerOrHost || '').trim(),
+    status: data.status || 'upcoming'
+  };
+  list.unshift(item);
+  saveSchedules(list);
+  logSecurityEvent('SCHEDULE_CREATED', 'INFO', `Jadwal baru ditambahkan: ${item.title}`);
+  return item;
+}
+
+function updateSchedule(id, updatedData) {
+  const list = getSchedules();
+  const index = list.findIndex(s => s.id === id);
+  if (index === -1) return null;
+
+  list[index] = {
+    ...list[index],
+    title: updatedData.title !== undefined ? String(updatedData.title).trim() : list[index].title,
+    category: updatedData.category !== undefined ? String(updatedData.category).trim() : list[index].category,
+    date: updatedData.date !== undefined ? String(updatedData.date).trim() : list[index].date,
+    time: updatedData.time !== undefined ? String(updatedData.time).trim() : list[index].time,
+    location: updatedData.location !== undefined ? String(updatedData.location).trim() : list[index].location,
+    description: updatedData.description !== undefined ? String(updatedData.description).trim() : list[index].description,
+    speakerOrHost: updatedData.speakerOrHost !== undefined ? String(updatedData.speakerOrHost).trim() : list[index].speakerOrHost,
+    status: updatedData.status !== undefined ? updatedData.status : list[index].status
+  };
+
+  saveSchedules(list);
+  logSecurityEvent('SCHEDULE_UPDATED', 'INFO', `Jadwal diperbarui: ${list[index].title}`);
+  return list[index];
+}
+
+function deleteSchedule(id) {
+  const list = getSchedules();
+  const target = list.find(s => s.id === id);
+  const filtered = list.filter(s => s.id !== id);
+  saveSchedules(filtered);
+  if (target) {
+    logSecurityEvent('SCHEDULE_DELETED', 'WARN', `Jadwal dihapus: ${target.title}`);
+  }
+  return true;
+}
+
+function resetSchedules() {
+  saveSchedules([...DEFAULT_SCHEDULES]);
+  return [...DEFAULT_SCHEDULES];
 }
 
 /* ==========================================================================
@@ -4307,6 +4444,10 @@ function renderBannerSlider() {
     (currentBanner.actionUrl && (currentBanner.actionUrl.includes('psb') || currentBanner.actionUrl === '#spmb')) ||
     (currentBanner.actionText && currentBanner.actionText.toLowerCase().includes('daftar'))
   );
+  const isJadwalAction = Boolean(
+    (currentBanner.actionUrl && (currentBanner.actionUrl.includes('jadwal') || currentBanner.actionUrl === '#jadwal')) ||
+    (currentBanner.actionText && currentBanner.actionText.toLowerCase().includes('jadwal'))
+  );
 
   container.innerHTML = `
     <div class="hero-image-banner-card fade-in" style="background-image: linear-gradient(to right, rgba(15, 23, 42, 0.88) 0%, rgba(15, 23, 42, 0.45) 100%), url('${safeImgUrl}');">
@@ -4324,6 +4465,11 @@ function renderBannerSlider() {
             <button type="button" class="btn-primary banner-cta-btn" data-action="open-spmb">
               <span>${safeActionText}</span>
               <i data-lucide="arrow-right" width="16" height="16"></i>
+            </button>
+          ` : isJadwalAction ? `
+            <button type="button" class="btn-primary banner-cta-btn" data-action="open-jadwal" style="background: #10B981;">
+              <span>${safeActionText}</span>
+              <i data-lucide="calendar" width="16" height="16"></i>
             </button>
           ` : currentBanner.actionUrl ? `
             <a href="${safeActionUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary banner-cta-btn">
@@ -4392,6 +4538,11 @@ function initBannerSlider() {
       if (spmbBtn) {
         e.preventDefault();
         window.dispatchEvent(new CustomEvent('yiqul:open-spmb'));
+      }
+      const jadwalBtn = e.target.closest('[data-action="open-jadwal"]');
+      if (jadwalBtn) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('yiqul:open-jadwal'));
       }
     });
   }
@@ -5007,6 +5158,9 @@ function bindSpmbEvents() {
 
       // Register new student into SPMB database
       registrationResult = registerNewStudent(spmbDraft);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('yiqul:spmb-updated', { detail: registrationResult }));
+      }
       currentStep = 4;
       renderSpmbModalContent();
     };
@@ -5048,6 +5202,223 @@ function initSpmbModal() {
     const jenjang = (e.detail && e.detail.jenjang) || 'SDT Al-Qudwah';
     openSpmbModal(jenjang);
   });
+}
+
+
+/* --- MODULE: src/components/JadwalModal.js --- */
+/**
+ * COMPONENT: JADWAL & AGENDA KEGIATAN YAYASAN INTERACTIVE MODAL
+ * Portal Yiqul - Unified Digital Ecosystem Launcher
+ * Yayasan Islam Qudwatul Ummah (Yiqul)
+ * 
+ * Menampilkan jadwal agenda resmi (Wisuda Tahfidz, MPLS, Ujian Sanad, Silaturahmi Wali)
+ * dengan filter kategori dinamis, penanda waktu, dan informasi lokasi.
+ */
+
+
+
+let activeCategoryFilter = 'all';
+
+/**
+ * Format string tanggal YYYY-MM-DD ke format Indonesia (Contoh: "20 Des 2026")
+ * @param {string} dateStr 
+ * @returns {{day: string, month: string, year: string, full: string}}
+ */
+function parseScheduleDate(dateStr) {
+  if (!dateStr) {
+    return { day: '--', month: '---', year: '----', full: '-' };
+  }
+  const months = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'SEP', 'OKT', 'NOV', 'DES'];
+  const fullMonths = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const y = parts[0];
+    const mIdx = parseInt(parts[1], 10) - 1;
+    const d = parts[2];
+    const mShort = months[mIdx] || 'BLN';
+    const mFull = fullMonths[mIdx] || '';
+    return {
+      day: d,
+      month: mShort,
+      year: y,
+      full: `${parseInt(d, 10)} ${mFull} ${y}`
+    };
+  }
+  return { day: '01', month: 'KEG', year: '2026', full: dateStr };
+}
+
+/**
+ * Buka modal jadwal kegiatan yayasan
+ * @param {string} prefillCategory - 'all' | 'Tahfidz' | 'Akademik' | 'Yayasan'
+ */
+function openJadwalModal(prefillCategory = 'all') {
+  activeCategoryFilter = prefillCategory;
+  const modal = document.getElementById('jadwal-modal');
+  if (!modal) return;
+
+  renderJadwalModalContent();
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    window.lucide.createIcons();
+  }
+}
+
+/**
+ * Tutup modal jadwal kegiatan yayasan
+ */
+function closeJadwalModal() {
+  const modal = document.getElementById('jadwal-modal');
+  if (modal) {
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+/**
+ * Render seluruh isi antarmuka modal jadwal
+ */
+function renderJadwalModalContent() {
+  const modal = document.getElementById('jadwal-modal');
+  if (!modal) return;
+
+  const allSchedules = getSchedules();
+  const filtered = activeCategoryFilter === 'all'
+    ? allSchedules
+    : allSchedules.filter(s => s.category.toLowerCase() === activeCategoryFilter.toLowerCase());
+
+  modal.innerHTML = `
+    <div class="modal-container jadwal-modal-window">
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="brand-logo-badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981;" aria-hidden="true">
+            <i data-lucide="calendar" width="20" height="20"></i>
+          </div>
+          <div>
+            <h3 class="modal-title">Jadwal & Agenda Kegiatan Yayasan</h3>
+            <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">
+              Pesantren & Sekolah Terpadu Islam Qudwatul Ummah Lebak
+            </span>
+          </div>
+        </div>
+        <button type="button" class="btn-icon" id="jadwal-close-btn" aria-label="Tutup Jadwal">
+          <i data-lucide="x" width="20" height="20"></i>
+        </button>
+      </div>
+
+      <!-- Filter Kategori Kapsul -->
+      <div style="padding: 0.75rem 1.25rem; background: var(--bg-surface); border-bottom: 1px solid var(--border-subtle); display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+        <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-right: 0.25rem;">Filter:</span>
+        <button type="button" class="jadwal-filter-pill ${activeCategoryFilter === 'all' ? 'active' : ''}" data-cat="all">
+          Semua (${allSchedules.length})
+        </button>
+        <button type="button" class="jadwal-filter-pill ${activeCategoryFilter === 'Tahfidz' ? 'active' : ''}" data-cat="Tahfidz">
+          📖 Tahfidz
+        </button>
+        <button type="button" class="jadwal-filter-pill ${activeCategoryFilter === 'Akademik' ? 'active' : ''}" data-cat="Akademik">
+          🎓 Akademik
+        </button>
+        <button type="button" class="jadwal-filter-pill ${activeCategoryFilter === 'Yayasan' ? 'active' : ''}" data-cat="Yayasan">
+          🏛️ Yayasan
+        </button>
+      </div>
+
+      <!-- Timeline List -->
+      <div class="jadwal-timeline-list">
+        ${filtered.length === 0 ? `
+          <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+            <i data-lucide="calendar-x" width="40" height="40" style="margin-bottom: 0.5rem; opacity: 0.5;"></i>
+            <p style="font-weight: 600; font-size: 0.9375rem;">Tidak ada agenda di kategori ini</p>
+            <p style="font-size: 0.8125rem;">Silakan pilih filter lain atau hubungi Asatidz/Sekretariat.</p>
+          </div>
+        ` : filtered.map(item => {
+          const dateObj = parseScheduleDate(item.date);
+          return `
+            <div class="jadwal-card">
+              <div class="jadwal-date-badge">
+                <span class="jadwal-date-day">${escapeHtml(dateObj.day)}</span>
+                <span class="jadwal-date-month">${escapeHtml(dateObj.month)}</span>
+              </div>
+              <div class="jadwal-card-info">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; flex-wrap: wrap;">
+                  <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">
+                    ${escapeHtml(item.title)}
+                  </h4>
+                  <span class="jadwal-badge-cat cat-${item.category.toLowerCase()}">
+                    ${escapeHtml(item.category)}
+                  </span>
+                </div>
+                
+                ${item.description ? `
+                  <p style="margin: 0.35rem 0 0.5rem 0; font-size: 0.8125rem; color: var(--text-secondary); line-height: 1.45;">
+                    ${escapeHtml(item.description)}
+                  </p>
+                ` : ''}
+
+                <div style="display: flex; gap: 0.875rem; flex-wrap: wrap; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                  <span style="display: inline-flex; align-items: center; gap: 0.25rem;">
+                    <i data-lucide="clock" width="13" height="13" style="color: #10B981;"></i>
+                    ${escapeHtml(item.time || 'Waktu Menyesuaikan')}
+                  </span>
+                  <span style="display: inline-flex; align-items: center; gap: 0.25rem;">
+                    <i data-lucide="map-pin" width="13" height="13" style="color: #3B82F6;"></i>
+                    ${escapeHtml(item.location || 'Kampus Al-Qudwah')}
+                  </span>
+                  ${item.speakerOrHost ? `
+                    <span style="display: inline-flex; align-items: center; gap: 0.25rem;">
+                      <i data-lucide="user-check" width="13" height="13" style="color: #8B5CF6;"></i>
+                      ${escapeHtml(item.speakerOrHost)}
+                    </span>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+
+      <!-- Modal Footer -->
+      <div style="padding: 0.875rem 1.25rem; background: var(--bg-surface); border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 0.75rem; color: var(--text-muted);">
+          * Jadwal dapat disesuaikan sewaktu-waktu oleh Sekretariat Yayasan.
+        </span>
+        <button type="button" class="btn-primary" id="jadwal-ok-btn" style="padding: 0.4rem 1rem; font-size: 0.8125rem;">
+          Tutup
+        </button>
+      </div>
+    </div>
+  `;
+
+  // Bind Event Listeners
+  const closeBtn = modal.querySelector('#jadwal-close-btn');
+  if (closeBtn) closeBtn.addEventListener('click', closeJadwalModal);
+
+  const okBtn = modal.querySelector('#jadwal-ok-btn');
+  if (okBtn) okBtn.addEventListener('click', closeJadwalModal);
+
+  // Filter Kapsul
+  modal.querySelectorAll('.jadwal-filter-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeCategoryFilter = btn.getAttribute('data-cat') || 'all';
+      renderJadwalModalContent();
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+      }
+    });
+  });
+
+  // Klik backdrop luar
+  if (!modal.__hasBackdropListener) {
+    modal.__hasBackdropListener = true;
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeJadwalModal();
+      }
+    });
+  }
 }
 
 
@@ -5285,6 +5656,7 @@ function createFileUploader({
 
 
 
+
 let activeTab = 'apps'; // 'apps' | 'banners' | 'branding' | 'docs' | 'role'
 let appLogoUploader = null;
 let bannerImageUploader = null;
@@ -5402,6 +5774,8 @@ function renderActiveTabContent() {
     renderTabRoleSettings(contentArea);
   } else if (activeTab === 'spmb') {
     renderTabSpmb(contentArea);
+  } else if (activeTab === 'schedules') {
+    renderTabSchedules(contentArea);
   }
 
   if (window.lucide && typeof window.lucide.createIcons === 'function') {
@@ -6879,6 +7253,210 @@ function bindTabSpmbEvents(container) {
   });
 }
 
+/* ==========================================================================
+   TAB 7: KELOLA JADWAL & AGENDA KEGIATAN YAYASAN (CRUD)
+   ========================================================================== */
+function renderTabSchedules(container) {
+  const schedules = getSchedules();
+
+  container.innerHTML = `
+    <div class="tab-pane-layout">
+      <!-- Form Input Jadwal -->
+      <div class="tab-form-column">
+        <h3 class="admin-pane-title">
+          <i data-lucide="calendar-plus" width="18" height="18" style="color: #10B981;"></i>
+          <span id="sched-editor-heading">Tambah Agenda / Jadwal Baru</span>
+        </h3>
+
+        <form id="admin-sched-form">
+          <input type="hidden" id="admin-sched-id" value="">
+
+          <div class="form-group">
+            <label class="form-label" for="admin-sched-title">Nama Acara / Kegiatan *</label>
+            <input type="text" id="admin-sched-title" class="form-input" placeholder="Contoh: Wisuda Tahfidz & Haflah Khotmil Quran" required>
+          </div>
+
+          <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div>
+              <label class="form-label" for="admin-sched-category">Kategori Kegiatan *</label>
+              <select id="admin-sched-category" class="form-select" required>
+                <option value="Tahfidz">Tahfidz & Al-Qur'an</option>
+                <option value="Akademik">Akademik & Sekolah</option>
+                <option value="Yayasan">Yayasan & Wali Santri</option>
+                <option value="Pesantren">Kegiatan Pesantren / Asrama</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label" for="admin-sched-date">Tanggal Acara *</label>
+              <input type="date" id="admin-sched-date" class="form-input" required>
+            </div>
+          </div>
+
+          <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div>
+              <label class="form-label" for="admin-sched-time">Waktu Kegiatan</label>
+              <input type="text" id="admin-sched-time" class="form-input" placeholder="08:00 - 12:00 WIB" required>
+            </div>
+            <div>
+              <label class="form-label" for="admin-sched-location">Lokasi / Tempat *</label>
+              <input type="text" id="admin-sched-location" class="form-input" placeholder="Masjid Utama / Kampus Terpadu" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="admin-sched-speaker">Penyelenggara / Pengisi Acara</label>
+            <input type="text" id="admin-sched-speaker" class="form-input" placeholder="Contoh: Mudir Ponpes & Dewan Asatidz">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="admin-sched-desc">Keterangan / Deskripsi Singkat</label>
+            <textarea id="admin-sched-desc" class="form-textarea" placeholder="Detail informasi pelaksanaan agenda..." style="min-height: 70px;"></textarea>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem;">
+            <button type="button" id="admin-sched-reset-btn" class="btn-secondary">Reset / Batal</button>
+            <button type="submit" class="btn-primary" style="background: #10B981;">
+              <i data-lucide="check" width="16" height="16"></i> Simpan Jadwal
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- List Jadwal Terpasang -->
+      <div class="tab-list-column">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <h4 style="font-weight: 700; font-size: 0.9375rem; margin: 0;">
+            Agenda Terjadwal (${schedules.length})
+          </h4>
+          <button type="button" id="btn-admin-preview-jadwal" class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.6rem;">
+            <i data-lucide="eye" width="13" height="13"></i> Pratinjau Modal
+          </button>
+        </div>
+
+        <div class="admin-items-scroll">
+          ${schedules.length === 0 ? `
+            <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted);">
+              Belum ada jadwal kegiatan. Silakan tambahkan melalui form di samping.
+            </div>
+          ` : schedules.map((s) => `
+            <div class="admin-item-row" style="align-items: flex-start;">
+              <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 48px; min-width: 48px; height: 48px; background: rgba(16, 185, 129, 0.1); border-radius: 6px; color: #10B981; font-weight: 700; font-size: 0.8125rem; line-height: 1.2; text-align: center;">
+                <span style="font-size: 1rem; font-weight: 800;">${s.date ? s.date.split('-')[2] : '--'}</span>
+                <span style="font-size: 0.625rem; text-transform: uppercase;">${s.category.slice(0, 3)}</span>
+              </div>
+              <div class="admin-item-info">
+                <strong style="font-size: 0.875rem;">${escapeHtml(s.title)}</strong>
+                <span style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-top: 0.15rem;">
+                  📅 ${escapeHtml(s.date)} • ⏰ ${escapeHtml(s.time || '-')}
+                </span>
+                <span style="font-size: 0.6875rem; color: var(--text-muted); display: block;">
+                  📍 ${escapeHtml(s.location || '-')}
+                </span>
+              </div>
+              <div style="display: flex; gap: 0.25rem; align-items: center;">
+                <button type="button" class="btn-icon btn-edit-sched-item" data-sched-id="${s.id}" title="Edit Jadwal">
+                  <i data-lucide="pencil" width="14" height="14"></i>
+                </button>
+                <button type="button" class="btn-icon btn-delete-sched-item" data-sched-id="${s.id}" title="Hapus Jadwal" style="color: #EF4444;">
+                  <i data-lucide="trash-2" width="14" height="14"></i>
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Submit Handler
+  const form = document.getElementById('admin-sched-form');
+  if (form) {
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = document.getElementById('admin-sched-id').value;
+      const title = document.getElementById('admin-sched-title').value.trim();
+      const category = document.getElementById('admin-sched-category').value;
+      const date = document.getElementById('admin-sched-date').value;
+      const time = document.getElementById('admin-sched-time').value.trim();
+      const location = document.getElementById('admin-sched-location').value.trim();
+      const speakerOrHost = document.getElementById('admin-sched-speaker').value.trim();
+      const description = document.getElementById('admin-sched-desc').value.trim();
+
+      if (!title || !date || !location) {
+        alert('Mohon lengkapi Nama Acara, Tanggal, dan Lokasi.');
+        return;
+      }
+
+      if (id) {
+        updateSchedule(id, { title, category, date, time, location, speakerOrHost, description });
+      } else {
+        addSchedule({ title, category, date, time, location, speakerOrHost, description });
+      }
+
+      renderTabSchedules(container);
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+      }
+    });
+  }
+
+  // Reset Handler
+  const resetBtn = document.getElementById('admin-sched-reset-btn');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      form.reset();
+      document.getElementById('admin-sched-id').value = '';
+      const heading = document.getElementById('sched-editor-heading');
+      if (heading) heading.textContent = 'Tambah Agenda / Jadwal Baru';
+    });
+  }
+
+  // Edit Handlers
+  container.querySelectorAll('.btn-edit-sched-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-sched-id');
+      const item = schedules.find(s => s.id === id);
+      if (!item) return;
+
+      document.getElementById('admin-sched-id').value = item.id;
+      document.getElementById('admin-sched-title').value = item.title || '';
+      document.getElementById('admin-sched-category').value = item.category || 'Tahfidz';
+      document.getElementById('admin-sched-date').value = item.date || '';
+      document.getElementById('admin-sched-time').value = item.time || '';
+      document.getElementById('admin-sched-location').value = item.location || '';
+      document.getElementById('admin-sched-speaker').value = item.speakerOrHost || '';
+      document.getElementById('admin-sched-desc').value = item.description || '';
+
+      const heading = document.getElementById('sched-editor-heading');
+      if (heading) heading.textContent = `Edit Jadwal: ${item.title}`;
+      document.getElementById('admin-sched-title').focus();
+    });
+  });
+
+  // Delete Handlers
+  container.querySelectorAll('.btn-delete-sched-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-sched-id');
+      const item = schedules.find(s => s.id === id);
+      if (confirm(`Yakin ingin menghapus jadwal "${item ? item.title : id}"?`)) {
+        deleteSchedule(id);
+        renderTabSchedules(container);
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+          window.lucide.createIcons();
+        }
+      }
+    });
+  });
+
+  // Preview Modal Handler
+  const previewBtn = document.getElementById('btn-admin-preview-jadwal');
+  if (previewBtn) {
+    previewBtn.addEventListener('click', () => {
+      openJadwalModal('all');
+    });
+  }
+}
+
 /**
  * Inisialisasi Admin Panel Controller
  */
@@ -6959,6 +7537,16 @@ function initAdminPanel() {
           }
           errorEl.style.display = 'block';
         }
+      }
+    });
+  }
+
+  // Auto-refresh Tab SPMB jika ada pendaftaran baru
+  if (typeof window !== 'undefined') {
+    window.addEventListener('yiqul:spmb-updated', () => {
+      const contentContainer = document.getElementById('admin-panel-tab-content');
+      if (contentContainer && activeTab === 'spmb') {
+        renderTabSpmb(contentContainer);
       }
     });
   }
@@ -7505,6 +8093,7 @@ async function triggerInstallPrompt() {
 
 
 
+
 /**
  * Update rendering katalog Bento Grid berdasarkan filter saat ini
  */
@@ -7595,6 +8184,9 @@ function bootstrap() {
 
   // 6b. Inisialisasi SPMB Online Modal & Pendaftaran Santri Baru
   initSpmbModal();
+
+  // 6c. Inisialisasi Jadwal & Agenda Kegiatan Modal
+  initJadwalModal();
 
   // 7. Inisialisasi Event Delegation Kartu Bento
   initBentoGridEvents({

@@ -11,7 +11,8 @@ import {
   DEFAULT_ANNOUNCEMENT, 
   DEFAULT_BRANDING, 
   DEFAULT_BANNERS, 
-  DEFAULT_DOCUMENTS 
+  DEFAULT_DOCUMENTS,
+  DEFAULT_SCHEDULES
 } from '../data/defaultApps.js';
 import { sanitizeUrl, isValidUrl } from './sanitizer.js';
 import {
@@ -36,6 +37,7 @@ const STORAGE_KEY_THEME = 'yiqul_theme_mode';
 const STORAGE_KEY_BRANDING = 'yiqul_portal_branding';
 const STORAGE_KEY_BANNERS = 'yiqul_portal_banners';
 const STORAGE_KEY_DOCUMENTS = 'yiqul_portal_documents';
+const STORAGE_KEY_SCHEDULES = 'yiqul_portal_schedules';
 const STORAGE_KEY_ROLE = 'yiqul_user_role';
 const STORAGE_KEY_ADMIN_PIN = 'yiqul_admin_pin';
 
@@ -348,7 +350,8 @@ export function exportRegistryJson() {
     announcement: getAnnouncement(),
     branding: getBranding(),
     banners: getBanners(),
-    documents: getDocuments()
+    documents: getDocuments(),
+    schedules: getSchedules()
   };
   return JSON.stringify(payload, null, 2);
 }
@@ -397,10 +400,14 @@ export function importRegistryJson(jsonString) {
       saveDocuments(data.documents);
     }
 
+    if (Array.isArray(data.schedules)) {
+      saveSchedules(data.schedules);
+    }
+
     return {
       success: true,
       count: validApps.length,
-      message: `Berhasil mengimpor ${validApps.length} aplikasi, branding, dan banner ke Portal Yiqul.`
+      message: `Berhasil mengimpor ${validApps.length} aplikasi, branding, banner, dan jadwal ke Portal Yiqul.`
     };
   } catch (e) {
     return {
@@ -421,9 +428,11 @@ export function resetToDefault() {
   saveBranding(DEFAULT_BRANDING);
   saveBanners(DEFAULT_BANNERS);
   saveDocuments(DEFAULT_DOCUMENTS);
+  saveSchedules(DEFAULT_SCHEDULES);
   dispatchRegistryEvent('yiqul:registry-changed', { count: DEFAULT_APPS.length });
   dispatchRegistryEvent('yiqul:branding-changed', DEFAULT_BRANDING);
   dispatchRegistryEvent('yiqul:banners-changed', DEFAULT_BANNERS);
+  dispatchRegistryEvent('yiqul:schedules-changed', DEFAULT_SCHEDULES);
 }
 
 /**
@@ -628,6 +637,88 @@ export function deleteDocument(id) {
   if (docs.length === initialLength) return false;
   saveDocuments(docs);
   return true;
+}
+
+/* ==========================================================================
+   SCHEDULES / JADWAL & AGENDA KEGIATAN MANAGEMENT
+   ========================================================================== */
+
+export function getSchedules() {
+  const raw = getStorageItem(STORAGE_KEY_SCHEDULES);
+  if (!raw) {
+    saveSchedules(DEFAULT_SCHEDULES, false);
+    return [...DEFAULT_SCHEDULES];
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : [...DEFAULT_SCHEDULES];
+  } catch (e) {
+    return [...DEFAULT_SCHEDULES];
+  }
+}
+
+export function saveSchedules(schedules, emitEvent = true) {
+  setStorageItem(STORAGE_KEY_SCHEDULES, JSON.stringify(schedules));
+  if (emitEvent) {
+    dispatchRegistryEvent('yiqul:schedules-changed', { count: schedules.length });
+  }
+}
+
+export function addSchedule(data) {
+  const list = getSchedules();
+  const item = {
+    id: data.id || `sched-${Date.now()}`,
+    title: String(data.title || '').trim(),
+    category: String(data.category || 'Tahfidz').trim(),
+    date: String(data.date || '').trim(),
+    time: String(data.time || '').trim(),
+    location: String(data.location || '').trim(),
+    description: String(data.description || '').trim(),
+    speakerOrHost: String(data.speakerOrHost || '').trim(),
+    status: data.status || 'upcoming'
+  };
+  list.unshift(item);
+  saveSchedules(list);
+  logSecurityEvent('SCHEDULE_CREATED', 'INFO', `Jadwal baru ditambahkan: ${item.title}`);
+  return item;
+}
+
+export function updateSchedule(id, updatedData) {
+  const list = getSchedules();
+  const index = list.findIndex(s => s.id === id);
+  if (index === -1) return null;
+
+  list[index] = {
+    ...list[index],
+    title: updatedData.title !== undefined ? String(updatedData.title).trim() : list[index].title,
+    category: updatedData.category !== undefined ? String(updatedData.category).trim() : list[index].category,
+    date: updatedData.date !== undefined ? String(updatedData.date).trim() : list[index].date,
+    time: updatedData.time !== undefined ? String(updatedData.time).trim() : list[index].time,
+    location: updatedData.location !== undefined ? String(updatedData.location).trim() : list[index].location,
+    description: updatedData.description !== undefined ? String(updatedData.description).trim() : list[index].description,
+    speakerOrHost: updatedData.speakerOrHost !== undefined ? String(updatedData.speakerOrHost).trim() : list[index].speakerOrHost,
+    status: updatedData.status !== undefined ? updatedData.status : list[index].status
+  };
+
+  saveSchedules(list);
+  logSecurityEvent('SCHEDULE_UPDATED', 'INFO', `Jadwal diperbarui: ${list[index].title}`);
+  return list[index];
+}
+
+export function deleteSchedule(id) {
+  const list = getSchedules();
+  const target = list.find(s => s.id === id);
+  const filtered = list.filter(s => s.id !== id);
+  saveSchedules(filtered);
+  if (target) {
+    logSecurityEvent('SCHEDULE_DELETED', 'WARN', `Jadwal dihapus: ${target.title}`);
+  }
+  return true;
+}
+
+export function resetSchedules() {
+  saveSchedules([...DEFAULT_SCHEDULES]);
+  return [...DEFAULT_SCHEDULES];
 }
 
 /* ==========================================================================

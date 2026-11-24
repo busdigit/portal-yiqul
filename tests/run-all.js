@@ -24,7 +24,8 @@ const testFiles = [
   'tests/task26_security.test.js',
   'tests/task27_analytics.test.js',
   'tests/task28_animation.test.js',
-  'tests/task29_spmb.test.js'
+  'tests/task29_spmb.test.js',
+  'tests/task30_jadwal.test.js'
 ];
 
 let totalPassed = 0;

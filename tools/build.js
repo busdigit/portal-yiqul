@@ -36,6 +36,7 @@ const jsFiles = [
   'src/components/ModalViewer.js',
   'src/components/BannerSlider.js',
   'src/components/SpmbModal.js',
+  'src/components/JadwalModal.js',
   'src/components/FileUploader.js',
   'src/components/AdminPanel.js',
   'src/components/LandingHero.js',

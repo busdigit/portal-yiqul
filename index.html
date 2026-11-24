@@ -22,7 +22,7 @@
   <link rel="icon" type="image/svg+xml" href="./assets/icons/icon.svg">
 
   <!-- Stylesheet (Root Bundle + Modular Fallback) -->
-  <link rel="stylesheet" href="./bundle.css?v=12">
+  <link rel="stylesheet" href="./bundle.css?v=13">
   <link rel="stylesheet" href="src/styles/style.css">
   <link rel="stylesheet" href="src/styles/landing.css">
 
@@ -336,7 +336,10 @@
   <!-- Modal Pendaftaran Santri Baru (SPMB 2026/2027) -->
   <div id="spmb-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true"></div>
 
-  <!-- Full-Featured Admin Control Center (6 Tab Modal) -->
+  <!-- Modal Jadwal & Agenda Kegiatan Yayasan -->
+  <div id="jadwal-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true"></div>
+
+  <!-- Full-Featured Admin Control Center (7 Tab Modal) -->
   <div id="admin-panel-backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="modal-container admin-control-window" style="max-width: 1100px; height: 92vh;">
       <!-- Admin Window Header -->
@@ -383,6 +386,10 @@
           <i data-lucide="graduation-cap" width="16" height="16"></i>
           <span>6. SPMB Online</span>
         </button>
+        <button type="button" class="admin-nav-tab" data-tab="schedules">
+          <i data-lucide="calendar" width="16" height="16"></i>
+          <span>7. Jadwal & Agenda</span>
+        </button>
       </div>
 
       <!-- Tab Content Area -->
@@ -409,7 +416,7 @@
   </div> <!-- End of #portal-view-container -->
 
   <!-- Main JavaScript App (Root Bundle + Modular Fallback) -->
-  <script src="./bundle.js?v=12" defer></script>
+  <script src="./bundle.js?v=13" defer></script>
   <script type="module" src="src/app.js"></script>
 </body>
 </html>

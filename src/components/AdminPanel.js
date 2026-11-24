@@ -40,9 +40,14 @@ import {
   importRegistryJson,
   resetToDefault,
   bindPinModalHelpers,
-  resetPinInputState
+  resetPinInputState,
+  getSchedules,
+  addSchedule,
+  updateSchedule,
+  deleteSchedule
 } from '../services/storage.js';
 import { createFileUploader } from './FileUploader.js';
+import { openJadwalModal } from './JadwalModal.js';
 import { escapeHtml, isValidUrl } from '../services/sanitizer.js';
 import {
   getAnalyticsData,
@@ -190,6 +195,8 @@ export function renderActiveTabContent() {
     renderTabRoleSettings(contentArea);
   } else if (activeTab === 'spmb') {
     renderTabSpmb(contentArea);
+  } else if (activeTab === 'schedules') {
+    renderTabSchedules(contentArea);
   }
 
   if (window.lucide && typeof window.lucide.createIcons === 'function') {
@@ -1667,6 +1674,210 @@ function bindTabSpmbEvents(container) {
   });
 }
 
+/* ==========================================================================
+   TAB 7: KELOLA JADWAL & AGENDA KEGIATAN YAYASAN (CRUD)
+   ========================================================================== */
+function renderTabSchedules(container) {
+  const schedules = getSchedules();
+
+  container.innerHTML = `
+    <div class="tab-pane-layout">
+      <!-- Form Input Jadwal -->
+      <div class="tab-form-column">
+        <h3 class="admin-pane-title">
+          <i data-lucide="calendar-plus" width="18" height="18" style="color: #10B981;"></i>
+          <span id="sched-editor-heading">Tambah Agenda / Jadwal Baru</span>
+        </h3>
+
+        <form id="admin-sched-form">
+          <input type="hidden" id="admin-sched-id" value="">
+
+          <div class="form-group">
+            <label class="form-label" for="admin-sched-title">Nama Acara / Kegiatan *</label>
+            <input type="text" id="admin-sched-title" class="form-input" placeholder="Contoh: Wisuda Tahfidz & Haflah Khotmil Quran" required>
+          </div>
+
+          <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div>
+              <label class="form-label" for="admin-sched-category">Kategori Kegiatan *</label>
+              <select id="admin-sched-category" class="form-select" required>
+                <option value="Tahfidz">Tahfidz & Al-Qur'an</option>
+                <option value="Akademik">Akademik & Sekolah</option>
+                <option value="Yayasan">Yayasan & Wali Santri</option>
+                <option value="Pesantren">Kegiatan Pesantren / Asrama</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label" for="admin-sched-date">Tanggal Acara *</label>
+              <input type="date" id="admin-sched-date" class="form-input" required>
+            </div>
+          </div>
+
+          <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div>
+              <label class="form-label" for="admin-sched-time">Waktu Kegiatan</label>
+              <input type="text" id="admin-sched-time" class="form-input" placeholder="08:00 - 12:00 WIB" required>
+            </div>
+            <div>
+              <label class="form-label" for="admin-sched-location">Lokasi / Tempat *</label>
+              <input type="text" id="admin-sched-location" class="form-input" placeholder="Masjid Utama / Kampus Terpadu" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="admin-sched-speaker">Penyelenggara / Pengisi Acara</label>
+            <input type="text" id="admin-sched-speaker" class="form-input" placeholder="Contoh: Mudir Ponpes & Dewan Asatidz">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="admin-sched-desc">Keterangan / Deskripsi Singkat</label>
+            <textarea id="admin-sched-desc" class="form-textarea" placeholder="Detail informasi pelaksanaan agenda..." style="min-height: 70px;"></textarea>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem;">
+            <button type="button" id="admin-sched-reset-btn" class="btn-secondary">Reset / Batal</button>
+            <button type="submit" class="btn-primary" style="background: #10B981;">
+              <i data-lucide="check" width="16" height="16"></i> Simpan Jadwal
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- List Jadwal Terpasang -->
+      <div class="tab-list-column">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <h4 style="font-weight: 700; font-size: 0.9375rem; margin: 0;">
+            Agenda Terjadwal (${schedules.length})
+          </h4>
+          <button type="button" id="btn-admin-preview-jadwal" class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.6rem;">
+            <i data-lucide="eye" width="13" height="13"></i> Pratinjau Modal
+          </button>
+        </div>
+
+        <div class="admin-items-scroll">
+          ${schedules.length === 0 ? `
+            <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted);">
+              Belum ada jadwal kegiatan. Silakan tambahkan melalui form di samping.
+            </div>
+          ` : schedules.map((s) => `
+            <div class="admin-item-row" style="align-items: flex-start;">
+              <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 48px; min-width: 48px; height: 48px; background: rgba(16, 185, 129, 0.1); border-radius: 6px; color: #10B981; font-weight: 700; font-size: 0.8125rem; line-height: 1.2; text-align: center;">
+                <span style="font-size: 1rem; font-weight: 800;">${s.date ? s.date.split('-')[2] : '--'}</span>
+                <span style="font-size: 0.625rem; text-transform: uppercase;">${s.category.slice(0, 3)}</span>
+              </div>
+              <div class="admin-item-info">
+                <strong style="font-size: 0.875rem;">${escapeHtml(s.title)}</strong>
+                <span style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-top: 0.15rem;">
+                  📅 ${escapeHtml(s.date)} • ⏰ ${escapeHtml(s.time || '-')}
+                </span>
+                <span style="font-size: 0.6875rem; color: var(--text-muted); display: block;">
+                  📍 ${escapeHtml(s.location || '-')}
+                </span>
+              </div>
+              <div style="display: flex; gap: 0.25rem; align-items: center;">
+                <button type="button" class="btn-icon btn-edit-sched-item" data-sched-id="${s.id}" title="Edit Jadwal">
+                  <i data-lucide="pencil" width="14" height="14"></i>
+                </button>
+                <button type="button" class="btn-icon btn-delete-sched-item" data-sched-id="${s.id}" title="Hapus Jadwal" style="color: #EF4444;">
+                  <i data-lucide="trash-2" width="14" height="14"></i>
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Submit Handler
+  const form = document.getElementById('admin-sched-form');
+  if (form) {
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = document.getElementById('admin-sched-id').value;
+      const title = document.getElementById('admin-sched-title').value.trim();
+      const category = document.getElementById('admin-sched-category').value;
+      const date = document.getElementById('admin-sched-date').value;
+      const time = document.getElementById('admin-sched-time').value.trim();
+      const location = document.getElementById('admin-sched-location').value.trim();
+      const speakerOrHost = document.getElementById('admin-sched-speaker').value.trim();
+      const description = document.getElementById('admin-sched-desc').value.trim();
+
+      if (!title || !date || !location) {
+        alert('Mohon lengkapi Nama Acara, Tanggal, dan Lokasi.');
+        return;
+      }
+
+      if (id) {
+        updateSchedule(id, { title, category, date, time, location, speakerOrHost, description });
+      } else {
+        addSchedule({ title, category, date, time, location, speakerOrHost, description });
+      }
+
+      renderTabSchedules(container);
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+      }
+    });
+  }
+
+  // Reset Handler
+  const resetBtn = document.getElementById('admin-sched-reset-btn');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      form.reset();
+      document.getElementById('admin-sched-id').value = '';
+      const heading = document.getElementById('sched-editor-heading');
+      if (heading) heading.textContent = 'Tambah Agenda / Jadwal Baru';
+    });
+  }
+
+  // Edit Handlers
+  container.querySelectorAll('.btn-edit-sched-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-sched-id');
+      const item = schedules.find(s => s.id === id);
+      if (!item) return;
+
+      document.getElementById('admin-sched-id').value = item.id;
+      document.getElementById('admin-sched-title').value = item.title || '';
+      document.getElementById('admin-sched-category').value = item.category || 'Tahfidz';
+      document.getElementById('admin-sched-date').value = item.date || '';
+      document.getElementById('admin-sched-time').value = item.time || '';
+      document.getElementById('admin-sched-location').value = item.location || '';
+      document.getElementById('admin-sched-speaker').value = item.speakerOrHost || '';
+      document.getElementById('admin-sched-desc').value = item.description || '';
+
+      const heading = document.getElementById('sched-editor-heading');
+      if (heading) heading.textContent = `Edit Jadwal: ${item.title}`;
+      document.getElementById('admin-sched-title').focus();
+    });
+  });
+
+  // Delete Handlers
+  container.querySelectorAll('.btn-delete-sched-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-sched-id');
+      const item = schedules.find(s => s.id === id);
+      if (confirm(`Yakin ingin menghapus jadwal "${item ? item.title : id}"?`)) {
+        deleteSchedule(id);
+        renderTabSchedules(container);
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+          window.lucide.createIcons();
+        }
+      }
+    });
+  });
+
+  // Preview Modal Handler
+  const previewBtn = document.getElementById('btn-admin-preview-jadwal');
+  if (previewBtn) {
+    previewBtn.addEventListener('click', () => {
+      openJadwalModal('all');
+    });
+  }
+}
+
 /**
  * Inisialisasi Admin Panel Controller
  */
@@ -1747,6 +1958,16 @@ export function initAdminPanel() {
           }
           errorEl.style.display = 'block';
         }
+      }
+    });
+  }
+
+  // Auto-refresh Tab SPMB jika ada pendaftaran baru
+  if (typeof window !== 'undefined') {
+    window.addEventListener('yiqul:spmb-updated', () => {
+      const contentContainer = document.getElementById('admin-panel-tab-content');
+      if (contentContainer && activeTab === 'spmb') {
+        renderTabSpmb(contentContainer);
       }
     });
   }

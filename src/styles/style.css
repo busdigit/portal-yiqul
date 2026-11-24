@@ -2640,3 +2640,129 @@ html.dark .pin-numpad-wrapper {
   }
 }
 
+/* ==========================================================================
+   MODAL Z-INDEX ELEVATION (SPMB & JADWAL OVERLAY OVER ADMIN PANEL)
+   ========================================================================== */
+
+#spmb-modal {
+  z-index: 1300 !important;
+}
+
+#jadwal-modal {
+  z-index: 1250 !important;
+}
+
+.jadwal-modal-window {
+  max-width: 700px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.jadwal-filter-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.jadwal-filter-pill:hover {
+  background: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.jadwal-filter-pill.active {
+  background: var(--color-primary-500);
+  border-color: var(--color-primary-500);
+  color: #FFFFFF !important;
+}
+
+.jadwal-timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.jadwal-card {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.jadwal-card:hover {
+  border-color: var(--color-primary-500);
+  transform: translateY(-1px);
+}
+
+.jadwal-date-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  min-width: 58px;
+  height: 58px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: var(--radius-md);
+  color: var(--color-primary-600);
+  text-align: center;
+  padding: 0.25rem;
+}
+
+.jadwal-date-day {
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.jadwal-date-month {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-top: 0.15rem;
+}
+
+.jadwal-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.jadwal-badge-cat {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.jadwal-badge-cat.cat-tahfidz {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.jadwal-badge-cat.cat-akademik {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563EB;
+}
+
+.jadwal-badge-cat.cat-yayasan {
+  background: rgba(139, 92, 246, 0.12);
+  color: #7C3AED;
+}
+
+

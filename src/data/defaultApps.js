@@ -306,10 +306,57 @@ export const DEFAULT_BANNERS = [
     title: "Wisuda Tahfidz & Haflah Khotmil Quran",
     subtitle: "Apresiasi setoran mutaba'ah hafalan santri dan pembagian sanad tahfidz.",
     imageUrl: "https://images.unsplash.com/photo-1542810634-71277d95dcbb?q=80&w=1200&auto=format&fit=crop",
-    actionUrl: "https://tahfidz.qudwatulummah.sch.id",
+    actionUrl: "#jadwal",
     actionText: "Lihat Jadwal ↗",
     isActive: true,
     displayOrder: 2
+  }
+];
+
+export const DEFAULT_SCHEDULES = [
+  {
+    id: "sched-01",
+    title: "Wisuda Tahfidz & Haflah Khotmil Quran",
+    category: "Tahfidz",
+    date: "2026-12-20",
+    time: "08:00 - 12:00 WIB",
+    location: "Masjid Utama Pesantren Qudwatul Ummah",
+    description: "Apresiasi setoran mutaba'ah hafalan santri 30 Juz dan pembagian sanad tahfidz resmi bagi para penghafal Al-Qur'an.",
+    speakerOrHost: "Mudir Ponpes & Dewan Asatidz Tahfidz",
+    status: "upcoming"
+  },
+  {
+    id: "sched-02",
+    title: "Masa Pengenalan Lingkungan Santri (MPLS) 2026/2027",
+    category: "Akademik",
+    date: "2026-07-13",
+    time: "07:30 - 15:00 WIB",
+    location: "Kampus Terpadu Al-Qudwah Lebak",
+    description: "Orientasi pengenalan santri baru seluruh jenjang Day Care, RA/TK, SDT, SMPT, dan SMAT Al-Qudwah.",
+    speakerOrHost: "Panitia SPMB & OSIS/ISMA Qudwah",
+    status: "upcoming"
+  },
+  {
+    id: "sched-03",
+    title: "Munaqosyah Sanad Tahfidz Terbuka",
+    category: "Tahfidz",
+    date: "2026-12-05",
+    time: "08:30 - 15:30 WIB",
+    location: "Aula Serbaguna Yayasan",
+    description: "Ujian tahfidz terbuka di hadapan dewan penguji sanad jazariyyah dan disaksikan orang tua santri.",
+    speakerOrHost: "Lembaga Tahfidz & Penguji Al-Qur'an",
+    status: "upcoming"
+  },
+  {
+    id: "sched-04",
+    title: "Silaturahmi Akbar Wali Santri & Pembagian Rapor",
+    category: "Yayasan",
+    date: "2026-12-19",
+    time: "09:00 - 13:00 WIB",
+    location: "Auditorium Al-Qudwah",
+    description: "Pertemuan evaluasi perkembangan santri semester ganjil, pembagian rapor, dan penguatan sinergi rumah-sekolah.",
+    speakerOrHost: "Pimpinan Yayasan Islam Qudwatul Ummah",
+    status: "upcoming"
   }
 ];
 
