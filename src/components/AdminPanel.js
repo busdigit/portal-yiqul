@@ -1392,7 +1392,7 @@ function renderTabSpmb(container) {
             <span>Penerimaan Santri Baru (SPMB 2026/2027)</span>
           </h3>
           <p style="font-size: 0.8125rem; color: var(--text-secondary); margin: 0;">
-            Kelola pendaftaran santri terpadu jenjang MTs, MA, & Takhasus Tahfidz Yayasan Islam Qudwatul Ummah.
+            Kelola pendaftaran santri terpadu Day Care, Play Group, RA/TK, SDT, SMPT & SMAT Al-Qudwah Lebak.
           </p>
         </div>
 
@@ -1415,16 +1415,20 @@ function renderTabSpmb(container) {
           <div class="stat-title">Total Pendaftar</div>
         </div>
         <div class="spmb-stat-card">
-          <div class="stat-number" style="color: #3B82F6;">${summary.mts}</div>
-          <div class="stat-title">Jenjang MTs</div>
+          <div class="stat-number" style="color: #06B6D4;">${(summary.daycare || 0) + (summary.playgroup || 0) + (summary.rat || 0) + (summary.tkt || 0)}</div>
+          <div class="stat-title">PAUD/TK/RA</div>
         </div>
         <div class="spmb-stat-card">
-          <div class="stat-number" style="color: #8B5CF6;">${summary.ma}</div>
-          <div class="stat-title">Jenjang MA</div>
+          <div class="stat-number" style="color: #10B981;">${summary.sdt || 0}</div>
+          <div class="stat-title">SDT Al-Qudwah</div>
         </div>
         <div class="spmb-stat-card">
-          <div class="stat-number" style="color: #10B981;">${summary.tahfidz}</div>
-          <div class="stat-title">Takhasus Tahfidz</div>
+          <div class="stat-number" style="color: #3B82F6;">${summary.smpt || 0}</div>
+          <div class="stat-title">SMPT Al-Qudwah</div>
+        </div>
+        <div class="spmb-stat-card">
+          <div class="stat-number" style="color: #8B5CF6;">${summary.smat || 0}</div>
+          <div class="stat-title">SMAT Al-Qudwah</div>
         </div>
         <div class="spmb-stat-card">
           <div class="stat-number" style="color: #F59E0B;">${summary.pending}</div>
@@ -1451,9 +1455,13 @@ function renderTabSpmb(container) {
         <div class="spmb-filter-group">
           <select id="spmb-filter-jenjang" class="form-select" style="font-size: 0.8125rem; padding: 0.4rem 0.65rem;">
             <option value="all" ${spmbFilterJenjang === 'all' ? 'selected' : ''}>Semua Jenjang</option>
-            <option value="MTs" ${spmbFilterJenjang === 'MTs' ? 'selected' : ''}>MTs</option>
-            <option value="MA" ${spmbFilterJenjang === 'MA' ? 'selected' : ''}>MA</option>
-            <option value="Tahfidz_Takhasus" ${spmbFilterJenjang === 'Tahfidz_Takhasus' ? 'selected' : ''}>Takhasus Tahfidz</option>
+            <option value="Day Care" ${spmbFilterJenjang === 'Day Care' ? 'selected' : ''}>Day Care</option>
+            <option value="Play Group" ${spmbFilterJenjang === 'Play Group' ? 'selected' : ''}>Play Group</option>
+            <option value="RAT Al-Qudwah" ${spmbFilterJenjang === 'RAT Al-Qudwah' ? 'selected' : ''}>RAT Al-Qudwah</option>
+            <option value="TKT Al-Qudwah" ${spmbFilterJenjang === 'TKT Al-Qudwah' ? 'selected' : ''}>TKT Al-Qudwah</option>
+            <option value="SDT Al-Qudwah" ${spmbFilterJenjang === 'SDT Al-Qudwah' ? 'selected' : ''}>SDT Al-Qudwah</option>
+            <option value="SMPT Al-Qudwah" ${spmbFilterJenjang === 'SMPT Al-Qudwah' ? 'selected' : ''}>SMPT Al-Qudwah</option>
+            <option value="SMAT Al-Qudwah" ${spmbFilterJenjang === 'SMAT Al-Qudwah' ? 'selected' : ''}>SMAT Al-Qudwah</option>
           </select>
 
           <select id="spmb-filter-status" class="form-select" style="font-size: 0.8125rem; padding: 0.4rem 0.65rem;">
@@ -1606,7 +1614,7 @@ function bindTabSpmbEvents(container) {
   const openNewBtn = document.getElementById('btn-spmb-open-new');
   if (openNewBtn) {
     openNewBtn.addEventListener('click', () => {
-      openSpmbModal('MTs');
+      openSpmbModal('SDT Al-Qudwah');
     });
   }
 

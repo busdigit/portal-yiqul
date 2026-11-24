@@ -18,9 +18,9 @@ let registrationResult = null;
 
 /**
  * Buka modal formulir pendaftaran SPMB Online
- * @param {string} prefillJenjang - 'MTs' | 'MA' | 'Tahfidz_Takhasus'
+ * @param {string} prefillJenjang - 'Day Care' | 'Play Group' | 'RAT Al-Qudwah' | 'TKT Al-Qudwah' | 'SDT Al-Qudwah' | 'SMPT Al-Qudwah' | 'SMAT Al-Qudwah'
  */
-export function openSpmbModal(prefillJenjang = 'MTs') {
+export function openSpmbModal(prefillJenjang = 'SDT Al-Qudwah') {
   currentStep = 1;
   registrationResult = null;
 
@@ -147,9 +147,13 @@ function renderStep1(defaultJenjang) {
         <div class="form-group">
           <label class="form-label" for="spmb-jenjang">Jenjang Pendidikan *</label>
           <select id="spmb-jenjang" class="form-select" required>
-            <option value="MTs" ${defaultJenjang === 'MTs' ? 'selected' : ''}>MTs Qudwatul Ummah</option>
-            <option value="MA" ${defaultJenjang === 'MA' ? 'selected' : ''}>MA Qudwatul Ummah</option>
-            <option value="Tahfidz_Takhasus" ${defaultJenjang === 'Tahfidz_Takhasus' ? 'selected' : ''}>Takhasus Tahfidz Quran</option>
+            <option value="Day Care" ${defaultJenjang === 'Day Care' ? 'selected' : ''}>Day Care</option>
+            <option value="Play Group" ${defaultJenjang === 'Play Group' ? 'selected' : ''}>Play Group</option>
+            <option value="RAT Al-Qudwah" ${defaultJenjang === 'RAT Al-Qudwah' ? 'selected' : ''}>RAT Al-Qudwah</option>
+            <option value="TKT Al-Qudwah" ${defaultJenjang === 'TKT Al-Qudwah' ? 'selected' : ''}>TKT Al-Qudwah</option>
+            <option value="SDT Al-Qudwah" ${defaultJenjang === 'SDT Al-Qudwah' || !defaultJenjang ? 'selected' : ''}>SDT Al-Qudwah</option>
+            <option value="SMPT Al-Qudwah" ${defaultJenjang === 'SMPT Al-Qudwah' ? 'selected' : ''}>SMPT Al-Qudwah</option>
+            <option value="SMAT Al-Qudwah" ${defaultJenjang === 'SMAT Al-Qudwah' ? 'selected' : ''}>SMAT Al-Qudwah</option>
           </select>
         </div>
 
@@ -641,7 +645,7 @@ export function initSpmbModal() {
 
   // Tangkap event global pemicu SPMB
   window.addEventListener('yiqul:open-spmb', (e) => {
-    const jenjang = (e.detail && e.detail.jenjang) || 'MTs';
+    const jenjang = (e.detail && e.detail.jenjang) || 'SDT Al-Qudwah';
     openSpmbModal(jenjang);
   });
 }

@@ -53,7 +53,7 @@ console.log(`✅ Test 2 Passed: Nomor registrasi unik terformat sempurna (${next
 // [Test 3] Verifikasi Pendaftaran Santri Baru (registerNewStudent)
 console.log('[Test 3] Verifikasi Pendaftaran Santri Baru...');
 const testStudent = {
-  jenjang: 'MTs',
+  jenjang: 'SMPT Al-Qudwah',
   jalur: 'Prestasi',
   asrama: 'Boarding',
   namaLengkap: 'Zaidan Ahmad Al-Farisi',
@@ -62,7 +62,7 @@ const testStudent = {
   jenisKelamin: 'L',
   tempatLahir: 'Lebak',
   tanggalLahir: '2013-03-15',
-  asalSekolah: 'SDIT Al-Qudwah Lebak',
+  asalSekolah: 'SDT Al-Qudwah Lebak',
   riwayatHafalan: '3-5 Juz',
   namaAyah: 'H. Lukman Hakim',
   pekerjaanAyah: 'Wiraswasta/Pedagang',
@@ -120,7 +120,10 @@ if (summary.total < 3) {
 if (summary.accepted < 1) {
   throw new Error(`Jumlah accepted harus minimal 1, didapat ${summary.accepted}`);
 }
-console.log(`✅ Test 6 Passed: Ringkasan metrik akurat (Total: ${summary.total}, MTs: ${summary.mts}, Diterima: ${summary.accepted}).`);
+if (summary.smpt < 2) {
+  throw new Error(`Jumlah SMPT harus minimal 2, didapat ${summary.smpt}`);
+}
+console.log(`✅ Test 6 Passed: Ringkasan metrik akurat (Total: ${summary.total}, SMPT: ${summary.smpt}, SMAT: ${summary.smat}, Diterima: ${summary.accepted}).`);
 
 // [Test 7] Verifikasi Ekspor Data ke Format CSV
 console.log('[Test 7] Verifikasi Ekspor CSV...');

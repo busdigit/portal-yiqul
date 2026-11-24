@@ -10,6 +10,19 @@
 const STORAGE_KEY_SPMB = 'yiqul_spmb_registrations';
 
 /**
+ * Daftar Resmi Jenjang Pendidikan Yayasan Islam Qudwatul Ummah (Yiqul)
+ */
+export const JENJANG_OPTIONS = [
+  'Day Care',
+  'Play Group',
+  'RAT Al-Qudwah',
+  'TKT Al-Qudwah',
+  'SDT Al-Qudwah',
+  'SMPT Al-Qudwah',
+  'SMAT Al-Qudwah'
+];
+
+/**
  * Daftar pendaftar awal (seed data) agar sistem langsung siap diuji
  */
 const DEFAULT_SPMB_SEED = [
@@ -18,7 +31,7 @@ const DEFAULT_SPMB_SEED = [
     createdAt: '2026-11-20T08:30:00.000Z',
     status: 'verified',
     adminNotes: 'Berkas administrasi lengkap, siap mengikuti tes wawancara & tahfidz.',
-    jenjang: 'MTs',
+    jenjang: 'SMPT Al-Qudwah',
     jalur: 'Reguler',
     asrama: 'Boarding',
     namaLengkap: 'Muhammad Fatih Al-Ayyubi',
@@ -27,7 +40,7 @@ const DEFAULT_SPMB_SEED = [
     jenisKelamin: 'L',
     tempatLahir: 'Lebak',
     tanggalLahir: '2014-05-12',
-    asalSekolah: 'SDIT Qudwatul Ummah Lebak',
+    asalSekolah: 'SDT Al-Qudwah Lebak',
     riwayatHafalan: '3-5 Juz',
     namaAyah: 'H. Ahmad Syarifudin, M.Pd.',
     pekerjaanAyah: 'Guru/Dosen',
@@ -48,7 +61,7 @@ const DEFAULT_SPMB_SEED = [
     createdAt: '2026-11-21T10:15:00.000Z',
     status: 'accepted',
     adminNotes: 'Lulus seleksi beasiswa tahfidz 5 juz dengan nilai mumtaz.',
-    jenjang: 'MA',
+    jenjang: 'SMAT Al-Qudwah',
     jalur: 'Beasiswa_Tahfidz',
     asrama: 'Boarding',
     namaLengkap: 'Aisyah Humaira Azzahra',
@@ -57,7 +70,7 @@ const DEFAULT_SPMB_SEED = [
     jenisKelamin: 'P',
     tempatLahir: 'Serang',
     tanggalLahir: '2011-09-25',
-    asalSekolah: 'MTs Negeri 1 Pandeglang',
+    asalSekolah: 'SMPT Al-Qudwah Lebak',
     riwayatHafalan: '> 5 Juz',
     namaAyah: 'Drs. Bambang Irawan',
     pekerjaanAyah: 'PNS/TNI/Polri',
@@ -148,7 +161,7 @@ export function registerNewStudent(formData) {
     adminNotes: 'Pendaftaran mandiri online via Portal Yiqul. Menunggu verifikasi berkas panitia.',
 
     // Pilihan Jenjang & Jalur
-    jenjang: String(formData.jenjang || 'MTs').trim(),
+    jenjang: String(formData.jenjang || 'SDT Al-Qudwah').trim(),
     jalur: String(formData.jalur || 'Reguler').trim(),
     asrama: String(formData.asrama || 'Boarding').trim(),
 
@@ -241,9 +254,15 @@ export function getSpmbSummary() {
   const list = getAllRegistrations();
   return {
     total: list.length,
-    mts: list.filter(r => r.jenjang === 'MTs').length,
-    ma: list.filter(r => r.jenjang === 'MA').length,
-    tahfidz: list.filter(r => r.jenjang === 'Tahfidz_Takhasus').length,
+    daycare: list.filter(r => r.jenjang === 'Day Care').length,
+    playgroup: list.filter(r => r.jenjang === 'Play Group').length,
+    rat: list.filter(r => r.jenjang === 'RAT Al-Qudwah').length,
+    tkt: list.filter(r => r.jenjang === 'TKT Al-Qudwah').length,
+    sdt: list.filter(r => r.jenjang === 'SDT Al-Qudwah').length,
+    smpt: list.filter(r => r.jenjang === 'SMPT Al-Qudwah').length,
+    smat: list.filter(r => r.jenjang === 'SMAT Al-Qudwah').length,
+    mts: list.filter(r => r.jenjang === 'SMPT Al-Qudwah' || r.jenjang === 'MTs').length,
+    ma: list.filter(r => r.jenjang === 'SMAT Al-Qudwah' || r.jenjang === 'MA').length,
     pending: list.filter(r => r.status === 'pending').length,
     verified: list.filter(r => r.status === 'verified').length,
     accepted: list.filter(r => r.status === 'accepted').length,
