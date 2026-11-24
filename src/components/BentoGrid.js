@@ -10,12 +10,65 @@
  */
 
 import { renderAppCard } from './AppCard.js';
-import { getFavorites, toggleFavorite, getAllApps, getAppById } from '../services/storage.js';
+import { getFavorites, toggleFavorite, getAllApps, getAppById, verifyAppAccessPin, checkRateLimit } from '../services/storage.js';
 import { resetFilters } from './SearchRibbon.js';
 import { escapeHtml } from '../services/sanitizer.js';
 
 let onOpenModalCallback = null;
 let onEditAppCallback = null;
+
+/**
+ * Buka Modal PIN Akses Aplikasi Terkunci
+ * @param {string} appId
+ */
+export function openAppLockModal(appId) {
+  const app = getAppById(appId);
+  if (!app) return;
+
+  const modalBackdrop = document.getElementById('app-lock-modal');
+  const titleEl = document.getElementById('lock-modal-app-title');
+  const subEl = document.getElementById('lock-modal-subheading');
+  const idInput = document.getElementById('lock-modal-app-id');
+  const pinInput = document.getElementById('app-lock-pin-input');
+  const errEl = document.getElementById('app-lock-error');
+
+  const rateLimit = checkRateLimit();
+
+  if (titleEl) titleEl.textContent = `Buka: ${app.title}`;
+  if (subEl) subEl.textContent = `Aplikasi ${app.title} Terkunci`;
+  if (idInput) idInput.value = app.id;
+  if (pinInput) {
+    pinInput.value = '';
+    if (!rateLimit.isLocked) {
+      setTimeout(() => pinInput.focus(), 100);
+    }
+  }
+  if (errEl) {
+    if (rateLimit.isLocked) {
+      errEl.textContent = `🔒 Akses ditangguhkan! Silakan tunggu ${rateLimit.remainingSeconds} detik.`;
+      errEl.style.display = 'block';
+    } else {
+      errEl.style.display = 'none';
+      errEl.textContent = '';
+    }
+  }
+
+  if (modalBackdrop) {
+    modalBackdrop.classList.add('open');
+    modalBackdrop.setAttribute('aria-hidden', 'false');
+  }
+}
+
+/**
+ * Tutup Modal PIN Akses Aplikasi Terkunci
+ */
+export function closeAppLockModal() {
+  const modalBackdrop = document.getElementById('app-lock-modal');
+  if (modalBackdrop) {
+    modalBackdrop.classList.remove('open');
+    modalBackdrop.setAttribute('aria-hidden', 'true');
+  }
+}
 
 /**
  * Render Skeleton Loading State (6 shimmer cards)
@@ -235,5 +288,87 @@ export function initBentoGridEvents({ onOpenModal, onEditApp }) {
       resetFilters();
       return;
     }
+
+    // 5. Prompt PIN Akses Aplikasi Terkunci
+    const lockBtn = e.target.closest('[data-action="prompt-app-lock"]');
+    if (lockBtn) {
+      e.preventDefault();
+      const appId = lockBtn.getAttribute('data-app-id');
+      if (appId) {
+        openAppLockModal(appId);
+      }
+      return;
+    }
   });
+
+  // Setup form & close events untuk Modal PIN Akses Aplikasi
+  const lockForm = document.getElementById('app-lock-form');
+  if (lockForm && !lockForm.__hasLockSubmitListener) {
+    lockForm.__hasLockSubmitListener = true;
+    lockForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const appId = document.getElementById('lock-modal-app-id').value;
+      const pinInput = document.getElementById('app-lock-pin-input');
+      const errEl = document.getElementById('app-lock-error');
+      const inputPin = pinInput ? pinInput.value : '';
+      const rateLimitBefore = checkRateLimit();
+
+      if (rateLimitBefore.isLocked) {
+        if (errEl) {
+          errEl.textContent = `🔒 Akses ditangguhkan! Silakan tunggu ${rateLimitBefore.remainingSeconds} detik.`;
+          errEl.style.display = 'block';
+        }
+        return;
+      }
+
+      if (verifyAppAccessPin(inputPin)) {
+        closeAppLockModal();
+        const app = getAppById(appId);
+        if (app) {
+          if (app.targetMode === 'iframe' && typeof onOpenModalCallback === 'function') {
+            onOpenModalCallback(app);
+          } else if (app.targetMode === '_self') {
+            window.location.href = app.targetUrl;
+          } else {
+            window.open(app.targetUrl, '_blank', 'noopener,noreferrer');
+          }
+        }
+      } else {
+        const rateLimitAfter = checkRateLimit();
+        if (errEl) {
+          if (rateLimitAfter.isLocked) {
+            errEl.textContent = `🚨 Terlalu banyak percobaan! Akses ditangguhkan selama ${rateLimitAfter.remainingSeconds} detik.`;
+          } else {
+            errEl.textContent = `❌ PIN Akses Salah! Sisa percobaan: ${rateLimitAfter.attemptsLeft} kali lagi.`;
+          }
+          errEl.style.display = 'block';
+        }
+        if (pinInput) {
+          pinInput.select();
+        }
+      }
+    });
+  }
+
+  const closeLockBtn = document.getElementById('close-lock-modal-btn');
+  if (closeLockBtn && !closeLockBtn.__hasListener) {
+    closeLockBtn.__hasListener = true;
+    closeLockBtn.addEventListener('click', closeAppLockModal);
+  }
+
+  const cancelLockBtn = document.getElementById('cancel-lock-modal-btn');
+  if (cancelLockBtn && !cancelLockBtn.__hasListener) {
+    cancelLockBtn.__hasListener = true;
+    cancelLockBtn.addEventListener('click', closeAppLockModal);
+  }
+
+  const lockBackdrop = document.getElementById('app-lock-modal');
+  if (lockBackdrop && !lockBackdrop.__hasBackdropListener) {
+    lockBackdrop.__hasBackdropListener = true;
+    lockBackdrop.addEventListener('click', (e) => {
+      if (e.target === lockBackdrop) {
+        closeAppLockModal();
+      }
+    });
+  }
 }

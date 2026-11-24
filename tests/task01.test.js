@@ -11,6 +11,9 @@ import {
   addApp,
   updateApp,
   deleteApp,
+  reorderApp,
+  toggleAppLock,
+  verifyAppAccessPin,
   toggleFavorite,
   getFavorites,
   exportRegistryJson,
@@ -91,8 +94,30 @@ const importResult = importRegistryJson(exportedJson);
 assert.strictEqual(importResult.success, true);
 assert.strictEqual(getAllApps().length, initialApps.length + 1);
 
+// Test Reorder App
+const appsBeforeReorder = getAllApps();
+const firstAppId = appsBeforeReorder[0].id;
+const secondAppId = appsBeforeReorder[1].id;
+reorderApp(secondAppId, 'up');
+const appsAfterReorder = getAllApps();
+assert.strictEqual(appsAfterReorder[0].id, secondAppId);
+assert.strictEqual(appsAfterReorder[1].id, firstAppId);
+reorderApp(secondAppId, 'down');
+const appsRestored = getAllApps();
+assert.strictEqual(appsRestored[0].id, firstAppId);
+
+// Test Toggle App Lock & Verify PIN
+const appToLock = getAllApps()[0];
+assert.strictEqual(Boolean(appToLock.isLocked), false);
+const lockedApp = toggleAppLock(appToLock.id);
+assert.strictEqual(lockedApp.isLocked, true);
+const unlockedApp = toggleAppLock(appToLock.id);
+assert.strictEqual(unlockedApp.isLocked, false);
+assert.strictEqual(verifyAppAccessPin('1234'), true);
+assert.strictEqual(verifyAppAccessPin('9999'), false);
+
 resetToDefault();
 assert.strictEqual(getAllApps().length, DEFAULT_APPS.length);
-console.log('✅ Test 3 Passed: Storage CRUD, Bookmark, Export, & Import 100% lulus.');
+console.log('✅ Test 3 Passed: Storage CRUD, Reorder, Bookmark, Export, & Import 100% lulus.');
 
 console.log('--- ALL TASK-01 TESTS PASSED SUCCESSFULLY! ---');

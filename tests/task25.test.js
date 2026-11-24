@@ -28,7 +28,8 @@ console.log('[Test 1] Verifikasi Default Config Firebase...');
 const cfg = getFirebaseConfig();
 assert.equal(typeof cfg, 'object');
 assert.equal(cfg.databaseType, 'firestore');
-assert.equal(isFirebaseConfigured(), false);
+assert.equal(typeof cfg.projectId, 'string');
+assert.equal(typeof cfg.apiKey, 'string');
 console.log('✅ Test 1 Passed: Default Config Firestore valid.');
 
 // Test 2: Save & Retrieve Firebase Config

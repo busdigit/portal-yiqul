@@ -14,6 +14,18 @@ import {
   DEFAULT_DOCUMENTS 
 } from '../data/defaultApps.js';
 import { sanitizeUrl, isValidUrl } from './sanitizer.js';
+import {
+  hashPin,
+  getStoredPinHash,
+  storeNewPin,
+  checkRateLimit,
+  recordFailedAttempt,
+  recordSuccessfulAttempt,
+  logSecurityEvent,
+  getSecurityAuditLogs,
+  clearSecurityAuditLogs,
+  sanitizeObject
+} from './security.js';
 
 const STORAGE_KEY_APPS = 'yiqul_apps_registry';
 const STORAGE_KEY_FAVORITES = 'yiqul_apps_favorites';
@@ -144,6 +156,7 @@ export function addApp(appData) {
     rolesAllowed: Array.isArray(appData.rolesAllowed) ? appData.rolesAllowed : ['public'],
     displayOrder: Number(appData.displayOrder) || (apps.length + 1),
     isFeatured: Boolean(appData.isFeatured),
+    isLocked: Boolean(appData.isLocked),
     updatedAt: new Date().toISOString()
   };
 
@@ -207,6 +220,72 @@ export function deleteApp(id) {
   }
 
   return true;
+}
+
+/**
+ * Memindahkan urutan aplikasi ke atas atau ke bawah
+ * @param {string} id - ID aplikasi
+ * @param {'up'|'down'} direction - Arah perpindahan
+ * @returns {Array} Daftar aplikasi terbaru setelah dipindah
+ */
+export function reorderApp(id, direction) {
+  const apps = getAllApps();
+  const index = apps.findIndex(a => a.id === id);
+  if (index === -1) return apps;
+
+  const targetIndex = direction === 'up' ? index - 1 : index + 1;
+  if (targetIndex < 0 || targetIndex >= apps.length) {
+    return apps; // Sudah di paling atas atau paling bawah
+  }
+
+  // Tukar posisi elemen dalam array
+  const temp = apps[index];
+  apps[index] = apps[targetIndex];
+  apps[targetIndex] = temp;
+
+  // Sinkronkan nilai displayOrder
+  apps.forEach((app, idx) => {
+    app.displayOrder = idx + 1;
+  });
+
+  saveAllApps(apps);
+  return apps;
+}
+
+/**
+ * Toggle status kunci (lock / unlock) sebuah aplikasi
+ * @param {string} id - ID aplikasi
+ * @returns {Object|null} Aplikasi yang diperbarui
+ */
+export function toggleAppLock(id) {
+  const apps = getAllApps();
+  const index = apps.findIndex(a => a.id === id);
+  if (index === -1) return null;
+  apps[index].isLocked = !apps[index].isLocked;
+  apps[index].updatedAt = new Date().toISOString();
+  saveAllApps(apps);
+  return apps[index];
+}
+
+/**
+ * Verifikasi PIN untuk membuka akses aplikasi terkunci (dengan Proteksi Anti-Brute Force & SHA-256)
+ * @param {string} inputPin
+ * @returns {boolean}
+ */
+export function verifyAppAccessPin(inputPin) {
+  const rateLimit = checkRateLimit();
+  if (rateLimit.isLocked) {
+    return false;
+  }
+  const currentPinHash = getStoredPinHash();
+  const inputHash = hashPin(inputPin);
+
+  if (inputHash === currentPinHash) {
+    recordSuccessfulAttempt('APP_ACCESS');
+    return true;
+  }
+  recordFailedAttempt('APP_ACCESS');
+  return false;
 }
 
 /**
@@ -279,7 +358,8 @@ export function exportRegistryJson() {
  */
 export function importRegistryJson(jsonString) {
   try {
-    const data = JSON.parse(jsonString);
+    const rawParsed = JSON.parse(jsonString);
+    const data = sanitizeObject(rawParsed);
     if (!data || !Array.isArray(data.apps)) {
       throw new Error('Format JSON tidak valid: Properti "apps" harus berupa array.');
     }
@@ -474,6 +554,30 @@ export function deleteBanner(id) {
   return true;
 }
 
+/**
+ * Memindahkan urutan banner ke atas atau ke bawah
+ * @param {string} id - ID banner
+ * @param {'up'|'down'} direction - Arah perpindahan
+ * @returns {Array} Daftar banner terbaru
+ */
+export function reorderBanner(id, direction) {
+  const banners = getBanners();
+  const index = banners.findIndex(b => b.id === id);
+  if (index === -1) return banners;
+
+  const targetIndex = direction === 'up' ? index - 1 : index + 1;
+  if (targetIndex < 0 || targetIndex >= banners.length) {
+    return banners;
+  }
+
+  const temp = banners[index];
+  banners[index] = banners[targetIndex];
+  banners[targetIndex] = temp;
+
+  saveBanners(banners);
+  return banners;
+}
+
 /* ==========================================================================
    DOCUMENTS MANAGEMENT (Buku Panduan, SK, Kalender PDF)
    ========================================================================== */
@@ -541,23 +645,29 @@ export function setCurrentRole(role) {
 }
 
 export function getAdminPin() {
-  return getStorageItem(STORAGE_KEY_ADMIN_PIN) || DEFAULT_ADMIN_PIN;
+  return getStoredPinHash();
 }
 
 export function saveAdminPin(newPin) {
-  if (!newPin || String(newPin).trim().length < 4) {
-    throw new Error('PIN Admin minimal harus 4 digit.');
-  }
-  setStorageItem(STORAGE_KEY_ADMIN_PIN, String(newPin).trim());
-  return true;
+  return storeNewPin(newPin);
 }
 
 export function verifyAdminPin(inputPin) {
-  const currentPin = getAdminPin();
-  if (String(inputPin).trim() === currentPin) {
+  const rateLimit = checkRateLimit();
+  if (rateLimit.isLocked) {
+    return false;
+  }
+
+  const currentPinHash = getStoredPinHash();
+  const inputHash = hashPin(inputPin);
+
+  if (inputHash === currentPinHash) {
+    recordSuccessfulAttempt('LOGIN_ADMIN');
     setCurrentRole('superadmin');
     return true;
   }
+
+  recordFailedAttempt('LOGIN_ADMIN');
   return false;
 }
 
@@ -568,5 +678,14 @@ export function isAdminLoggedIn() {
 
 export function logoutAdmin() {
   setCurrentRole('guest');
+  logSecurityEvent('LOGOUT_ADMIN', 'INFO', 'Sesi Administrator berhasil ditutup.');
   return true;
 }
+
+// Re-export fungsi keamanan terintegrasi
+export {
+  checkRateLimit,
+  getSecurityAuditLogs,
+  clearSecurityAuditLogs,
+  logSecurityEvent
+};

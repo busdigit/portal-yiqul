@@ -8,6 +8,7 @@
 
 import { escapeHtml, sanitizeUrl, getSafeLinkAttributes } from '../services/sanitizer.js';
 import { convertGoogleDriveToDirectLink } from '../services/uploader.js';
+import { isAdminLoggedIn } from '../services/storage.js';
 
 /**
  * Render string HTML kartu aplikasi Bento
@@ -20,6 +21,8 @@ export function renderAppCard(app, isFav = false) {
   const safeTitle = escapeHtml(app.title);
   const safeDesc = escapeHtml(app.shortDescription || 'Aplikasi resmi ekosistem Yayasan Islam Qudwatul Ummah.');
   const icon = escapeHtml(app.iconName || 'Globe');
+  const isAdmin = isAdminLoggedIn();
+  const isLocked = Boolean(app.isLocked);
 
   // Avatar icon: Gunakan gambar logo kustom (Google Drive / upload) jika ada
   let avatarMarkup = '';
@@ -50,6 +53,12 @@ export function renderAppCard(app, isFav = false) {
     statusBadgeHtml = `<span class="status-dot" title="Aplikasi Segera Hadir">⚪ Segera</span>`;
   }
 
+  // Lock status badge
+  let lockBadgeHtml = '';
+  if (isLocked) {
+    lockBadgeHtml = `<span class="status-dot locked" title="Aplikasi Terkunci: Butuh PIN Akses"><i data-lucide="lock" width="12" height="12"></i> Terkunci</span>`;
+  }
+
   // Favorite button
   const favActiveClass = isFav ? 'favorited' : '';
   const favIconFill = isFav ? 'fill: var(--color-accent-amber); color: var(--color-accent-amber);' : '';
@@ -58,18 +67,35 @@ export function renderAppCard(app, isFav = false) {
   let launchActionHtml = '';
   let modeBadgeText = 'Tab Baru';
 
-  if (app.targetMode === 'iframe') {
+  if (isLocked && !isAdmin) {
+    // Aplikasi Terkunci & Pengguna Bukan Admin: Wajib Masukkan PIN
+    modeBadgeText = 'Perlu PIN';
+    launchActionHtml = `
+      <button 
+        type="button" 
+        class="btn-launch btn-launch-locked" 
+        data-action="prompt-app-lock" 
+        data-app-id="${app.id}"
+        aria-label="Buka aplikasi terkunci ${safeTitle}"
+        title="Aplikasi Terkunci: Masukkan PIN Akses"
+      >
+        <span>Buka Terkunci</span>
+        <i data-lucide="lock" width="14" height="14"></i>
+      </button>
+    `;
+  } else if (app.targetMode === 'iframe') {
     modeBadgeText = 'Modal Window';
     launchActionHtml = `
       <button 
         type="button" 
-        class="btn-launch" 
+        class="btn-launch ${isLocked ? 'btn-launch-admin-unlocked' : ''}" 
         data-action="open-modal" 
         data-app-id="${app.id}"
         aria-label="Buka aplikasi ${safeTitle} di modal"
+        ${isLocked ? 'title="Akses Terbuka Khusus Admin"' : ''}
       >
         <span>Buka Aplikasi</span>
-        <i data-lucide="maximize-2" width="14" height="14"></i>
+        <i data-lucide="${isLocked ? 'unlock' : 'maximize-2'}" width="14" height="14"></i>
       </button>
     `;
   } else if (app.targetMode === '_self') {
@@ -78,11 +104,12 @@ export function renderAppCard(app, isFav = false) {
       <a 
         href="${safeUrl}" 
         target="_self" 
-        class="btn-launch"
+        class="btn-launch ${isLocked ? 'btn-launch-admin-unlocked' : ''}"
         aria-label="Buka aplikasi ${safeTitle}"
+        ${isLocked ? 'title="Akses Terbuka Khusus Admin"' : ''}
       >
         <span>Buka Aplikasi</span>
-        <i data-lucide="arrow-right" width="14" height="14"></i>
+        <i data-lucide="${isLocked ? 'unlock' : 'arrow-right'}" width="14" height="14"></i>
       </a>
     `;
   } else {
@@ -93,22 +120,24 @@ export function renderAppCard(app, isFav = false) {
         href="${safeUrl}" 
         target="_blank" 
         rel="noopener noreferrer" 
-        class="btn-launch"
+        class="btn-launch ${isLocked ? 'btn-launch-admin-unlocked' : ''}"
         aria-label="Buka aplikasi ${safeTitle} di tab baru"
+        ${isLocked ? 'title="Akses Terbuka Khusus Admin"' : ''}
       >
         <span>Buka Aplikasi</span>
-        <i data-lucide="external-link" width="14" height="14"></i>
+        <i data-lucide="${isLocked ? 'unlock' : 'external-link'}" width="14" height="14"></i>
       </a>
     `;
   }
 
   return `
-    <article class="app-card fade-in" id="card-${app.id}" data-category="${escapeHtml(app.category)}">
+    <article class="app-card fade-in ${isLocked ? 'is-locked-card' : ''}" id="card-${app.id}" data-category="${escapeHtml(app.category)}">
       <div>
-        <!-- Card Top: Avatar, Status, Favorite -->
+        <!-- Card Top: Avatar, Status, Lock, Favorite -->
         <div class="card-top">
           ${avatarMarkup}
           <div class="card-badges">
+            ${lockBadgeHtml}
             ${statusBadgeHtml}
             <button 
               type="button" 
@@ -145,7 +174,7 @@ export function renderAppCard(app, isFav = false) {
       <div class="card-footer">
         ${launchActionHtml}
         <span class="card-mode-badge" title="Mode pembukaan: ${modeBadgeText}">
-          <i data-lucide="layers" width="12" height="12"></i> ${modeBadgeText}
+          <i data-lucide="${isLocked && !isAdmin ? 'shield-alert' : 'layers'}" width="12" height="12"></i> ${modeBadgeText}
         </span>
       </div>
     </article>

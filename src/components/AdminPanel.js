@@ -15,12 +15,15 @@ import {
   addApp,
   updateApp,
   deleteApp,
+  reorderApp,
+  toggleAppLock,
   getBranding,
   saveBranding,
   getBanners,
   addBanner,
   updateBanner,
   deleteBanner,
+  reorderBanner,
   getDocuments,
   addDocument,
   deleteDocument,
@@ -30,6 +33,9 @@ import {
   saveAdminPin,
   isAdminLoggedIn,
   logoutAdmin,
+  checkRateLimit,
+  getSecurityAuditLogs,
+  clearSecurityAuditLogs,
   exportRegistryJson,
   importRegistryJson,
   resetToDefault
@@ -85,9 +91,24 @@ function showAdminAuthModal() {
     modalBackdrop.classList.add('open');
     modalBackdrop.setAttribute('aria-hidden', 'false');
     const pinInput = document.getElementById('admin-pin-input');
+    const errorEl = document.getElementById('admin-auth-error');
+    const rateLimit = checkRateLimit();
+
+    if (errorEl) {
+      if (rateLimit.isLocked) {
+        errorEl.textContent = `🔒 Akses ditangguhkan! Terlalu banyak percobaan salah. Silakan tunggu ${rateLimit.remainingSeconds} detik.`;
+        errorEl.style.display = 'block';
+      } else {
+        errorEl.style.display = 'none';
+        errorEl.textContent = '';
+      }
+    }
+
     if (pinInput) {
       pinInput.value = '';
-      setTimeout(() => pinInput.focus(), 100);
+      if (!rateLimit.isLocked) {
+        setTimeout(() => pinInput.focus(), 100);
+      }
     }
   }
 }
@@ -238,6 +259,18 @@ function renderTabApps(container) {
             </div>
           </div>
 
+          <!-- Hak Akses / Proteksi Kunci Aplikasi -->
+          <div class="form-group">
+            <label class="form-label" for="admin-form-app-locked">Hak Akses & Proteksi Aplikasi</label>
+            <select id="admin-form-app-locked" class="form-select">
+              <option value="false">🔓 Terbuka untuk Umum (Semua Bisa Buka)</option>
+              <option value="true">🔒 Terkunci (Khusus Admin / Butuh PIN Akses)</option>
+            </select>
+            <span style="font-size: 0.6875rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">
+              Jika dikunci, pengguna harus memasukkan PIN Yayasan (atau login Admin) untuk membuka aplikasi ini.
+            </span>
+          </div>
+
           <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem;">
             <button type="button" id="admin-app-reset-btn" class="btn-secondary">Reset Form</button>
             <button type="submit" class="btn-primary" id="admin-app-save-btn">
@@ -255,7 +288,7 @@ function renderTabApps(container) {
           </h4>
         </div>
         <div class="admin-items-scroll">
-          ${allApps.map(app => `
+          ${allApps.map((app, idx) => `
             <div class="admin-item-row">
               <div class="admin-item-thumb">
                 ${app.customIconUrl ? `<img src="${app.customIconUrl}" alt="${app.title}" />` : `<i data-lucide="${app.iconName || 'Globe'}" width="20" height="20"></i>`}
@@ -264,7 +297,16 @@ function renderTabApps(container) {
                 <strong>${escapeHtml(app.title)}</strong>
                 <span style="font-size: 0.6875rem; color: var(--text-muted);">${escapeHtml(app.targetUrl)}</span>
               </div>
-              <div style="display: flex; gap: 0.25rem;">
+              <div style="display: flex; gap: 0.25rem; align-items: center;">
+                <button type="button" class="btn-icon btn-toggle-lock" data-app-id="${app.id}" title="${app.isLocked ? 'Status Terkunci: Butuh PIN (Klik untuk Buka Akses)' : 'Status Terbuka: Umum (Klik untuk Kunci Akses)'}" style="${app.isLocked ? 'color: #F59E0B; background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.35);' : 'color: var(--text-muted);'}">
+                  <i data-lucide="${app.isLocked ? 'lock' : 'unlock'}" width="14" height="14"></i>
+                </button>
+                <button type="button" class="btn-icon btn-move-app-up" data-app-id="${app.id}" title="Pindahkan ke Atas" ${idx === 0 ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+                  <i data-lucide="arrow-up" width="14" height="14"></i>
+                </button>
+                <button type="button" class="btn-icon btn-move-app-down" data-app-id="${app.id}" title="Pindahkan ke Bawah" ${idx === allApps.length - 1 ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+                  <i data-lucide="arrow-down" width="14" height="14"></i>
+                </button>
                 <button type="button" class="btn-icon btn-edit-app-item" data-app-id="${app.id}" title="Edit">
                   <i data-lucide="pencil" width="14" height="14"></i>
                 </button>
@@ -307,6 +349,7 @@ function renderTabApps(container) {
       const shortDescription = document.getElementById('admin-form-app-desc').value.trim();
       const targetMode = document.getElementById('admin-form-app-target').value;
       const status = document.getElementById('admin-form-app-status').value;
+      const isLocked = document.getElementById('admin-form-app-locked').value === 'true';
 
       if (!isValidUrl(targetUrl)) {
         alert('URL tujuan tidak valid! Wajib berawalan https:// atau http://');
@@ -322,7 +365,8 @@ function renderTabApps(container) {
           customIconUrl: currentUploadedAppLogo,
           shortDescription,
           targetMode,
-          status
+          status,
+          isLocked
         });
       } else {
         addApp({
@@ -333,7 +377,8 @@ function renderTabApps(container) {
           customIconUrl: currentUploadedAppLogo,
           shortDescription,
           targetMode,
-          status
+          status,
+          isLocked
         });
       }
 
@@ -347,6 +392,8 @@ function renderTabApps(container) {
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
       currentUploadedAppLogo = '';
+      const lockSelect = document.getElementById('admin-form-app-locked');
+      if (lockSelect) lockSelect.value = 'false';
       renderTabApps(container);
     });
   }
@@ -366,10 +413,38 @@ function renderTabApps(container) {
       document.getElementById('admin-form-app-desc').value = app.shortDescription || '';
       document.getElementById('admin-form-app-target').value = app.targetMode || '_blank';
       document.getElementById('admin-form-app-status').value = app.status || 'active';
+      const lockSelect = document.getElementById('admin-form-app-locked');
+      if (lockSelect) lockSelect.value = app.isLocked ? 'true' : 'false';
       document.getElementById('app-editor-heading').textContent = `Edit: ${app.title}`;
 
       currentUploadedAppLogo = app.customIconUrl || '';
       if (appLogoUploader) appLogoUploader.setValue(currentUploadedAppLogo);
+    });
+  });
+
+  // Bind Toggle Kunci / Buka Akses Aplikasi
+  container.querySelectorAll('.btn-toggle-lock').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const appId = btn.getAttribute('data-app-id');
+      toggleAppLock(appId);
+      renderTabApps(container);
+    });
+  });
+
+  // Bind Pindahkan Posisi Aplikasi (Move Up & Down)
+  container.querySelectorAll('.btn-move-app-up').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const appId = btn.getAttribute('data-app-id');
+      reorderApp(appId, 'up');
+      renderTabApps(container);
+    });
+  });
+
+  container.querySelectorAll('.btn-move-app-down').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const appId = btn.getAttribute('data-app-id');
+      reorderApp(appId, 'down');
+      renderTabApps(container);
     });
   });
 
@@ -448,7 +523,7 @@ function renderTabBanners(container) {
           Banner Terpasang (${banners.length})
         </h4>
         <div class="admin-items-scroll">
-          ${banners.map(b => `
+          ${banners.map((b, idx) => `
             <div class="admin-item-row">
               <div class="admin-item-thumb" style="width: 72px; height: 48px; border-radius: 6px;">
                 <img src="${b.imageUrl}" alt="${b.title}" style="width: 100%; height: 100%; object-fit: cover;" />
@@ -459,7 +534,13 @@ function renderTabBanners(container) {
                   ${b.isActive ? '🟢 Ditampilkan di Beranda' : '⚪ Nonaktif'}
                 </span>
               </div>
-              <div style="display: flex; gap: 0.25rem;">
+              <div style="display: flex; gap: 0.25rem; align-items: center;">
+                <button type="button" class="btn-icon btn-move-banner-up" data-banner-id="${b.id}" title="Pindahkan ke Atas" ${idx === 0 ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+                  <i data-lucide="arrow-up" width="14" height="14"></i>
+                </button>
+                <button type="button" class="btn-icon btn-move-banner-down" data-banner-id="${b.id}" title="Pindahkan ke Bawah" ${idx === banners.length - 1 ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+                  <i data-lucide="arrow-down" width="14" height="14"></i>
+                </button>
                 <button type="button" class="btn-icon btn-edit-banner-item" data-banner-id="${b.id}" title="Edit">
                   <i data-lucide="pencil" width="14" height="14"></i>
                 </button>
@@ -536,6 +617,23 @@ function renderTabBanners(container) {
       renderTabBanners(container);
     });
   }
+
+  // Bind Pindahkan Posisi Banner (Move Up & Down)
+  container.querySelectorAll('.btn-move-banner-up').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const bannerId = btn.getAttribute('data-banner-id');
+      reorderBanner(bannerId, 'up');
+      renderTabBanners(container);
+    });
+  });
+
+  container.querySelectorAll('.btn-move-banner-down').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const bannerId = btn.getAttribute('data-banner-id');
+      reorderBanner(bannerId, 'down');
+      renderTabBanners(container);
+    });
+  });
 
   container.querySelectorAll('.btn-edit-banner-item').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -782,6 +880,7 @@ function renderTabRoleSettings(container) {
   const currentRole = getCurrentRole();
   const currentCloudUrl = getCloudBackendUrl();
   const currentFb = getFirebaseConfig();
+  const securityLogs = getSecurityAuditLogs();
 
   container.innerHTML = `
     <div style="max-width: 600px; margin: 0 auto;">
@@ -803,6 +902,39 @@ function renderTabRoleSettings(container) {
         </button>
       </div>
 
+      <!-- Pusat Pertahanan Siber & Log Audit Real-Time -->
+      <div style="background-color: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); padding: 1.25rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <h4 style="font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="shield-alert" width="18" height="18" style="color: #10B981;"></i>
+            <span>Pusat Pertahanan Siber & Log Audit</span>
+          </h4>
+          <span style="font-size: 0.6875rem; background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 600;">
+            🛡️ SHA-256 & Rate Limiter Aktif
+          </span>
+        </div>
+        <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.875rem;">
+          Memonitor setiap aktivitas autentikasi, mitigasi brute force, dan integritas sistem secara real-time.
+        </p>
+
+        <!-- Daftar Log Keamanan Real-Time -->
+        <div style="max-height: 160px; overflow-y: auto; background: var(--bg-main); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.5rem; font-family: monospace; font-size: 0.6875rem; margin-bottom: 0.75rem;">
+          ${securityLogs.length === 0 ? '<div style="color: var(--text-muted); text-align: center; padding: 1rem;">Belum ada catatan aktivitas keamanan.</div>' : securityLogs.map(log => `
+            <div style="display: flex; justify-content: space-between; padding: 0.25rem 0.35rem; border-bottom: 1px solid rgba(0,0,0,0.05); gap: 0.5rem;">
+              <span style="color: var(--text-muted); white-space: nowrap;">${new Date(log.timestamp).toLocaleTimeString('id-ID')}</span>
+              <span style="font-weight: 700; color: ${log.severity === 'DANGER' ? '#EF4444' : log.severity === 'WARN' ? '#F59E0B' : '#10B981'}; white-space: nowrap;">[${log.type}]</span>
+              <span style="flex: 1; color: var(--text-secondary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${escapeHtml(log.details)}</span>
+            </div>
+          `).join('')}
+        </div>
+
+        <div style="display: flex; justify-content: flex-end;">
+          <button type="button" id="btn-clear-sec-logs" class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.65rem;">
+            <i data-lucide="trash-2" width="12" height="12"></i> Bersihkan Log
+          </button>
+        </div>
+      </div>
+
       <!-- Cloud Database Firebase (Firestore Spark Plan Gratis) -->
       <div style="background-color: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); padding: 1.25rem; margin-bottom: 1.5rem;">
         <h4 style="font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
@@ -820,7 +952,12 @@ function renderTabRoleSettings(container) {
           </div>
           <div>
             <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.25rem; display: block;">Firebase Web API Key</label>
-            <input type="password" id="firebase-api-key" class="form-input" placeholder="contoh: AIzaSyD..." value="${escapeHtml(currentFb.apiKey)}">
+            <input type="text" id="firebase-api-key" class="form-input" placeholder="contoh: AIzaSyD..." value="${escapeHtml(currentFb.apiKey)}">
+            <p style="font-size: 0.6875rem; color: #3B82F6; margin-top: 0.35rem;">
+              <a href="https://console.firebase.google.com/project/${escapeHtml(currentFb.projectId || 'portal-yiqul-db')}/firestore" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">
+                🔗 Buka Firestore Console Project Ini (Pastikan Database Dibuat) ↗
+              </a>
+            </p>
           </div>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
             <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); min-width: 100px;">Tipe Database:</label>
@@ -1094,6 +1231,17 @@ function renderTabRoleSettings(container) {
       }
     });
   }
+
+  // Bind Bersihkan Log Audit Keamanan
+  const clearSecBtn = document.getElementById('btn-clear-sec-logs');
+  if (clearSecBtn) {
+    clearSecBtn.addEventListener('click', () => {
+      if (confirm('Bersihkan riwayat log audit pertahanan siber?')) {
+        clearSecurityAuditLogs();
+        renderTabRoleSettings(container);
+      }
+    });
+  }
 }
 
 /**
@@ -1138,19 +1286,35 @@ export function initAdminPanel() {
     });
   });
 
-  // Handle PIN Auth Submit
+  // Handle PIN Auth Submit dengan Anti-Brute Force Protection
   if (authForm) {
     authForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const pin = document.getElementById('admin-pin-input').value;
+      const rateLimitBefore = checkRateLimit();
+
+      if (rateLimitBefore.isLocked) {
+        const errorEl = document.getElementById('admin-auth-error');
+        if (errorEl) {
+          errorEl.textContent = `🔒 Akses ditangguhkan! Terlalu banyak percobaan salah. Silakan tunggu ${rateLimitBefore.remainingSeconds} detik.`;
+          errorEl.style.display = 'block';
+        }
+        return;
+      }
+
       const isSuccess = verifyAdminPin(pin);
 
       if (isSuccess) {
         showAdminDashboardModal();
       } else {
+        const rateLimitAfter = checkRateLimit();
         const errorEl = document.getElementById('admin-auth-error');
         if (errorEl) {
-          errorEl.textContent = 'PIN Admin salah! (Default PIN: 1234)';
+          if (rateLimitAfter.isLocked) {
+            errorEl.textContent = `🚨 Serangan terdeteksi! Akses ditangguhkan selama ${rateLimitAfter.remainingSeconds} detik.`;
+          } else {
+            errorEl.textContent = `❌ PIN Admin salah! Sisa percobaan: ${rateLimitAfter.attemptsLeft} kali lagi.`;
+          }
           errorEl.style.display = 'block';
         }
       }

@@ -10,6 +10,50 @@ import { getBranding, getAllApps } from '../services/storage.js';
 import { escapeHtml } from '../services/sanitizer.js';
 import { convertGoogleDriveToDirectLink } from '../services/uploader.js';
 
+let typewriterTimeoutId = null;
+
+function startTypewriterAnimation(phrases) {
+  if (typeof window === 'undefined') return;
+  if (typewriterTimeoutId) {
+    clearTimeout(typewriterTimeoutId);
+    typewriterTimeoutId = null;
+  }
+
+  const el = document.getElementById('hero-typewriter-text');
+  if (!el || !phrases || phrases.length === 0) return;
+
+  let phraseIndex = 0;
+  let charIndex = phrases[0].length;
+  let isDeleting = true;
+
+  function loop() {
+    const current = phrases[phraseIndex % phrases.length];
+
+    if (isDeleting) {
+      charIndex--;
+      el.textContent = current.substring(0, charIndex);
+    } else {
+      charIndex++;
+      el.textContent = current.substring(0, charIndex);
+    }
+
+    let speed = isDeleting ? 38 : 75;
+
+    if (!isDeleting && charIndex === current.length) {
+      speed = 2500;
+      isDeleting = true;
+    } else if (isDeleting && charIndex === 0) {
+      isDeleting = false;
+      phraseIndex++;
+      speed = 380;
+    }
+
+    typewriterTimeoutId = setTimeout(loop, speed);
+  }
+
+  typewriterTimeoutId = setTimeout(loop, 2200);
+}
+
 /**
  * Render seluruh elemen Hero & Floating Navbar di Landing Page
  */
@@ -20,6 +64,7 @@ export function renderLandingHero() {
   const branding = getBranding();
   const allApps = getAllApps();
   const previewApps = allApps.slice(0, 6);
+  const orgName = branding.organizationName || 'Yayasan Islam Qudwatul Ummah';
 
   const directLogo = branding.logoUrl ? convertGoogleDriveToDirectLink(branding.logoUrl) : '';
 
@@ -83,7 +128,9 @@ export function renderLandingHero() {
       <!-- Main Split Headline (Sans + Serif Italic Accent) -->
       <h1 class="landing-headline">
         Pusat Komando & Portal Navigasi Digital<br>
-        <span class="headline-serif-italic">${escapeHtml(branding.organizationName || 'Yayasan Islam Qudwatul Ummah')}</span>
+        <span class="headline-serif-italic">
+          <span id="hero-typewriter-text" class="typewriter-text">${escapeHtml(orgName)}</span><span class="typewriter-cursor" aria-hidden="true">|</span>
+        </span>
       </h1>
 
       <!-- Subtitle Description -->
@@ -170,4 +217,14 @@ export function renderLandingHero() {
   if (window.lucide && typeof window.lucide.createIcons === 'function') {
     window.lucide.createIcons();
   }
+
+  // Mulai animasi Typewriter teks berputar terus menerus
+  const phrases = [
+    orgName,
+    'Ekosistem Akademik & Tahfidz Quran',
+    'Sistem Keuangan & Billing SPP Santri',
+    'Portal Asatidz, Santri & Wali Murid',
+    'Navigasi 18+ Sistem Terintegrasi'
+  ];
+  startTypewriterAnimation(phrases);
 }

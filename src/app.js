@@ -4,7 +4,8 @@
  * Yayasan Islam Qudwatul Ummah (Yiqul)
  */
 
-import { getAllApps, getFavorites } from './services/storage.js';
+import { getAllApps, getFavorites, logoutAdmin } from './services/storage.js';
+import { initSessionTimeout, checkClickjackingGuard } from './services/security.js';
 import { initHeader } from './components/Header.js';
 import { initSearchAndRibbon, filterApps, getCurrentFilterState } from './components/SearchRibbon.js';
 import { 
@@ -15,7 +16,7 @@ import {
 } from './components/BentoGrid.js';
 import { initModalViewer, openModalViewer } from './components/ModalViewer.js';
 import { initBannerSlider } from './components/BannerSlider.js';
-import { initAdminPanel, openAdminPanel } from './components/AdminPanel.js';
+import { initAdminPanel, openAdminPanel, closeAdminPanel } from './components/AdminPanel.js';
 import { renderLandingHero } from './components/LandingHero.js';
 import { renderLandingFeatures } from './components/LandingFeatures.js';
 import { initPwaInstallPrompt } from './components/PwaInstallPrompt.js';
@@ -75,6 +76,10 @@ function handleRouting() {
  * Bootstrapping Aplikasi Utama Portal Yiqul
  */
 function bootstrap() {
+  if (typeof window !== 'undefined') {
+    if (window.__PORTAL_YIQUL_BOOTSTRAPPED__) return;
+    window.__PORTAL_YIQUL_BOOTSTRAPPED__ = true;
+  }
   console.log('🚀 [Portal Yiqul] Initializing Unified Ecosystem Launcher & Landing Page...');
 
   // 1. Inisialisasi Tampilan Landing Page
@@ -130,6 +135,13 @@ function bootstrap() {
       .then(reg => console.log('[PWA] Service Worker terdaftar:', reg.scope))
       .catch(err => console.log('[PWA] Service Worker registration skipped:', err));
   }
+
+  // 13. Cyber Security Defense: Anti-Clickjacking Frame Guard & Session Auto-Timeout
+  checkClickjackingGuard();
+  initSessionTimeout(() => {
+    logoutAdmin();
+    closeAdminPanel();
+  });
 }
 
 // Jalankan ketika DOM siap
