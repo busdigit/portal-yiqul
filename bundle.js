@@ -1019,6 +1019,349 @@ function animateModalOpen(modalContainer) {
 }
 
 
+/* --- MODULE: src/services/spmbService.js --- */
+/**
+ * SERVICE: SPMB ONLINE (PENDAFTARAN SANTRI BARU) DATABASE ENGINE
+ * Portal Yiqul - Unified Digital Ecosystem Launcher
+ * Yayasan Islam Qudwatul Ummah (Yiqul)
+ * 
+ * Mengelola penyimpanan formulir pendaftaran santri baru, pembuatan nomor registrasi,
+ * verifikasi status panitia PSB, pencetakan kartu tanda terima, dan ekspor data CSV.
+ */
+
+const STORAGE_KEY_SPMB = 'yiqul_spmb_registrations';
+
+/**
+ * Daftar pendaftar awal (seed data) agar sistem langsung siap diuji
+ */
+const DEFAULT_SPMB_SEED = [
+  {
+    id: 'SPMB-2026-0001',
+    createdAt: '2026-11-20T08:30:00.000Z',
+    status: 'verified',
+    adminNotes: 'Berkas administrasi lengkap, siap mengikuti tes wawancara & tahfidz.',
+    jenjang: 'MTs',
+    jalur: 'Reguler',
+    asrama: 'Boarding',
+    namaLengkap: 'Muhammad Fatih Al-Ayyubi',
+    nisn: '0112839481',
+    nikSantri: '3602191208110001',
+    jenisKelamin: 'L',
+    tempatLahir: 'Lebak',
+    tanggalLahir: '2014-05-12',
+    asalSekolah: 'SDIT Qudwatul Ummah Lebak',
+    riwayatHafalan: '3-5 Juz',
+    namaAyah: 'H. Ahmad Syarifudin, M.Pd.',
+    pekerjaanAyah: 'Guru/Dosen',
+    namaIbu: 'Hj. Siti Aminah, S.Pd.',
+    pekerjaanIbu: 'Ibu Rumah Tangga',
+    penghasilanOrtu: '5 - 10 Juta',
+    noWhatsapp: '081289123456',
+    hubunganWali: 'Orang Tua Kandung',
+    alamatLengkap: 'Jl. Raya Rangkasbitung - Pandeglang Km. 4',
+    kelurahanDesa: 'Cijoro Pasir',
+    kecamatan: 'Rangkasbitung',
+    kotaKabupaten: 'Kab. Lebak',
+    provinsi: 'Banten',
+    catatanKesehatan: 'Tidak ada riwayat alergi / sehat walafiat.'
+  },
+  {
+    id: 'SPMB-2026-0002',
+    createdAt: '2026-11-21T10:15:00.000Z',
+    status: 'accepted',
+    adminNotes: 'Lulus seleksi beasiswa tahfidz 5 juz dengan nilai mumtaz.',
+    jenjang: 'MA',
+    jalur: 'Beasiswa_Tahfidz',
+    asrama: 'Boarding',
+    namaLengkap: 'Aisyah Humaira Azzahra',
+    nisn: '0098712345',
+    nikSantri: '3602195509090002',
+    jenisKelamin: 'P',
+    tempatLahir: 'Serang',
+    tanggalLahir: '2011-09-25',
+    asalSekolah: 'MTs Negeri 1 Pandeglang',
+    riwayatHafalan: '> 5 Juz',
+    namaAyah: 'Drs. Bambang Irawan',
+    pekerjaanAyah: 'PNS/TNI/Polri',
+    namaIbu: 'Nur Hasanah',
+    pekerjaanIbu: 'Karyawan Swasta',
+    penghasilanOrtu: '5 - 10 Juta',
+    noWhatsapp: '087788991122',
+    hubunganWali: 'Orang Tua Kandung',
+    alamatLengkap: 'Komplek Griya Qudwah Indah Blok B3 No. 12',
+    kelurahanDesa: 'Muara Ciujung Timur',
+    kecamatan: 'Rangkasbitung',
+    kotaKabupaten: 'Kab. Lebak',
+    provinsi: 'Banten',
+    catatanKesehatan: 'Asma ringan saat cuaca dingin.'
+  }
+];
+
+/**
+ * Ambil seluruh data pendaftar SPMB
+ * @returns {Array<Object>}
+ */
+function getAllRegistrations() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_SPMB);
+    if (!raw) {
+      saveAllRegistrations(DEFAULT_SPMB_SEED);
+      return [...DEFAULT_SPMB_SEED];
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [...DEFAULT_SPMB_SEED];
+  } catch (err) {
+    console.error('[SPMB] Gagal membaca data pendaftaran:', err);
+    return [...DEFAULT_SPMB_SEED];
+  }
+}
+
+/**
+ * Simpan seluruh pendaftar ke localStorage
+ * @param {Array<Object>} list 
+ */
+function saveAllRegistrations(list) {
+  try {
+    localStorage.setItem(STORAGE_KEY_SPMB, JSON.stringify(list));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('yiqul:spmb-changed', { detail: { count: list.length } }));
+    }
+  } catch (err) {
+    console.error('[SPMB] Gagal menyimpan data:', err);
+  }
+}
+
+/**
+ * Buat nomor registrasi pendaftar unik baru (Contoh: SPMB-2026-0003)
+ * @param {Array<Object>} currentList 
+ * @returns {string}
+ */
+function generateRegistrationNumber(currentList = []) {
+  const currentYear = new Date().getFullYear();
+  let maxSeq = 0;
+
+  for (const item of currentList) {
+    if (item.id && item.id.startsWith(`SPMB-${currentYear}-`)) {
+      const parts = item.id.split('-');
+      const seq = parseInt(parts[2], 10);
+      if (!isNaN(seq) && seq > maxSeq) {
+        maxSeq = seq;
+      }
+    }
+  }
+
+  const nextSeq = maxSeq + 1;
+  return `SPMB-${currentYear}-${String(nextSeq).padStart(4, '0')}`;
+}
+
+/**
+ * Daftarkan calon santri baru
+ * @param {Object} formData 
+ * @returns {Object} Data pendaftar yang tersimpan lengkap dengan nomor registrasi
+ */
+function registerNewStudent(formData) {
+  const list = getAllRegistrations();
+  const regNumber = generateRegistrationNumber(list);
+
+  const newRegistration = {
+    id: regNumber,
+    createdAt: new Date().toISOString(),
+    status: 'pending', // 'pending' | 'verified' | 'accepted' | 'rejected'
+    adminNotes: 'Pendaftaran mandiri online via Portal Yiqul. Menunggu verifikasi berkas panitia.',
+
+    // Pilihan Jenjang & Jalur
+    jenjang: String(formData.jenjang || 'MTs').trim(),
+    jalur: String(formData.jalur || 'Reguler').trim(),
+    asrama: String(formData.asrama || 'Boarding').trim(),
+
+    // Data Calon Santri
+    namaLengkap: String(formData.namaLengkap || '').trim(),
+    nisn: String(formData.nisn || '').trim(),
+    nikSantri: String(formData.nikSantri || '').trim(),
+    jenisKelamin: String(formData.jenisKelamin || 'L').trim(),
+    tempatLahir: String(formData.tempatLahir || '').trim(),
+    tanggalLahir: String(formData.tanggalLahir || '').trim(),
+    asalSekolah: String(formData.asalSekolah || '').trim(),
+    riwayatHafalan: String(formData.riwayatHafalan || 'Belum Ada').trim(),
+
+    // Data Orang Tua / Wali
+    namaAyah: String(formData.namaAyah || '').trim(),
+    pekerjaanAyah: String(formData.pekerjaanAyah || 'Lainnya').trim(),
+    namaIbu: String(formData.namaIbu || '').trim(),
+    pekerjaanIbu: String(formData.pekerjaanIbu || 'Ibu Rumah Tangga').trim(),
+    penghasilanOrtu: String(formData.penghasilanOrtu || '2 - 5 Juta').trim(),
+    noWhatsapp: String(formData.noWhatsapp || '').trim(),
+    hubunganWali: String(formData.hubunganWali || 'Orang Tua Kandung').trim(),
+
+    // Alamat & Kontak
+    alamatLengkap: String(formData.alamatLengkap || '').trim(),
+    kelurahanDesa: String(formData.kelurahanDesa || '').trim(),
+    kecamatan: String(formData.kecamatan || '').trim(),
+    kotaKabupaten: String(formData.kotaKabupaten || '').trim(),
+    provinsi: String(formData.provinsi || 'Banten').trim(),
+    catatanKesehatan: String(formData.catatanKesehatan || '').trim()
+  };
+
+  list.unshift(newRegistration);
+  saveAllRegistrations(list);
+
+  return newRegistration;
+}
+
+/**
+ * Cari pendaftar berdasarkan ID / Nomor Registrasi
+ * @param {string} id 
+ * @returns {Object|null}
+ */
+function getRegistrationById(id) {
+  const list = getAllRegistrations();
+  return list.find(r => r.id === id) || null;
+}
+
+/**
+ * Perbarui status verifikasi pendaftar oleh admin
+ * @param {string} id - Nomor registrasi
+ * @param {string} newStatus - 'pending' | 'verified' | 'accepted' | 'rejected'
+ * @param {string} notes - Catatan panitia
+ * @returns {boolean}
+ */
+function updateRegistrationStatus(id, newStatus, notes = '') {
+  const list = getAllRegistrations();
+  const index = list.findIndex(r => r.id === id);
+  if (index === -1) return false;
+
+  list[index].status = newStatus;
+  if (notes) {
+    list[index].adminNotes = notes;
+  }
+  list[index].updatedAt = new Date().toISOString();
+
+  saveAllRegistrations(list);
+  return true;
+}
+
+/**
+ * Hapus data pendaftaran
+ * @param {string} id 
+ * @returns {boolean}
+ */
+function deleteRegistration(id) {
+  let list = getAllRegistrations();
+  const initialLen = list.length;
+  list = list.filter(r => r.id !== id);
+  if (list.length === initialLen) return false;
+
+  saveAllRegistrations(list);
+  return true;
+}
+
+/**
+ * Hitung ringkasan statistik pendaftaran untuk dasbor admin
+ * @returns {Object}
+ */
+function getSpmbSummary() {
+  const list = getAllRegistrations();
+  return {
+    total: list.length,
+    mts: list.filter(r => r.jenjang === 'MTs').length,
+    ma: list.filter(r => r.jenjang === 'MA').length,
+    tahfidz: list.filter(r => r.jenjang === 'Tahfidz_Takhasus').length,
+    pending: list.filter(r => r.status === 'pending').length,
+    verified: list.filter(r => r.status === 'verified').length,
+    accepted: list.filter(r => r.status === 'accepted').length,
+    rejected: list.filter(r => r.status === 'rejected').length
+  };
+}
+
+/**
+ * Ekspor seluruh data pendaftar ke format CSV (Excel)
+ * @returns {string} String konten CSV
+ */
+function exportRegistrationsCsv() {
+  const list = getAllRegistrations();
+  const headers = [
+    'No. Registrasi',
+    'Tanggal Daftar',
+    'Status',
+    'Jenjang',
+    'Jalur',
+    'Asrama',
+    'Nama Lengkap Santri',
+    'NISN',
+    'Jenis Kelamin',
+    'Tempat Lahir',
+    'Tanggal Lahir',
+    'Asal Sekolah',
+    'Riwayat Hafalan',
+    'Nama Ayah',
+    'Pekerjaan Ayah',
+    'Nama Ibu',
+    'Pekerjaan Ibu',
+    'Penghasilan Ortu',
+    'No. WhatsApp',
+    'Alamat Lengkap',
+    'Kota/Kabupaten',
+    'Catatan Panitia'
+  ];
+
+  const escapeCsv = (val) => {
+    if (val === null || val === undefined) return '""';
+    const str = String(val).replace(/"/g, '""');
+    return `"${str}"`;
+  };
+
+  const rows = list.map(r => [
+    escapeCsv(r.id),
+    escapeCsv(new Date(r.createdAt).toLocaleDateString('id-ID')),
+    escapeCsv(r.status),
+    escapeCsv(r.jenjang),
+    escapeCsv(r.jalur),
+    escapeCsv(r.asrama),
+    escapeCsv(r.namaLengkap),
+    escapeCsv(r.nisn),
+    escapeCsv(r.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'),
+    escapeCsv(r.tempatLahir),
+    escapeCsv(r.tanggalLahir),
+    escapeCsv(r.asalSekolah),
+    escapeCsv(r.riwayatHafalan),
+    escapeCsv(r.namaAyah),
+    escapeCsv(r.pekerjaanAyah),
+    escapeCsv(r.namaIbu),
+    escapeCsv(r.pekerjaanIbu),
+    escapeCsv(r.penghasilanOrtu),
+    escapeCsv(r.noWhatsapp),
+    escapeCsv(r.alamatLengkap),
+    escapeCsv(r.kotaKabupaten),
+    escapeCsv(r.adminNotes)
+  ].join(','));
+
+  return [headers.join(','), ...rows].join('\r\n');
+}
+
+/**
+ * Buat tautan konfirmasi WhatsApp ke panitia PSB yayasan
+ * @param {Object} reg - Data pendaftaran
+ * @param {string} committeePhone - Nomor WA Panitia
+ * @returns {string}
+ */
+function createWhatsAppConfirmationLink(reg, committeePhone = '6281289123456') {
+  const message = `Assalamu'alaikum Panitia PSB Yayasan Islam Qudwatul Ummah,
+
+Saya ingin mengonfirmasi pendaftaran santri baru online:
+*No. Registrasi:* ${reg.id}
+*Nama Calon Santri:* ${reg.namaLengkap}
+*Jenjang Pilihan:* ${reg.jenjang} (${reg.jalur})
+*Asal Sekolah:* ${reg.asalSekolah}
+*Nama Orang Tua:* ${reg.namaAyah} / ${reg.namaIbu}
+*No. Kontak:* ${reg.noWhatsapp}
+
+Mohon arahan terkait jadwal verifikasi berkas & tes seleksi selanjutnya. Terima kasih.
+Wassalamu'alaikum Warahmatullahi Wabarakatuh.`;
+
+  return `https://wa.me/${committeePhone}?text=${encodeURIComponent(message)}`;
+}
+
+
 /* --- MODULE: src/data/defaultApps.js --- */
 /**
  * DEFAULT SEED CATALOG
@@ -3115,6 +3458,22 @@ function renderAppCard(app, isFav = false) {
         <i data-lucide="lock" width="14" height="14"></i>
       </button>
     `;
+  } else if (app.id === 'yiqul-psb' || app.targetUrl === '#spmb') {
+    // Direct SPMB Online Wizard
+    modeBadgeText = 'Formulir Langsung';
+    launchActionHtml = `
+      <button 
+        type="button" 
+        class="btn-launch ${isLocked ? 'btn-launch-admin-unlocked' : ''}" 
+        data-action="open-spmb" 
+        data-app-id="${app.id}"
+        aria-label="Buka Pendaftaran SPMB Online"
+        ${isLocked ? 'title="Akses Terbuka Khusus Admin"' : ''}
+      >
+        <span>Daftar Online</span>
+        <i data-lucide="user-plus" width="14" height="14"></i>
+      </button>
+    `;
   } else if (app.targetMode === 'iframe') {
     modeBadgeText = 'Modal Window';
     launchActionHtml = `
@@ -3501,6 +3860,18 @@ function initBentoGridEvents({ onOpenModal, onEditApp }) {
       }
     }
 
+    // 2c. SPMB Direct Launch Form
+    const spmbBtn = e.target.closest('[data-action="open-spmb"]');
+    if (spmbBtn) {
+      e.preventDefault();
+      const appId = spmbBtn.getAttribute('data-app-id');
+      if (appId) {
+        recordAppLaunch(appId);
+      }
+      window.dispatchEvent(new CustomEvent('yiqul:open-spmb'));
+      return;
+    }
+
     // 3. Edit App (Admin)
     const editBtn = e.target.closest('[data-action="edit-app"]');
     if (editBtn) {
@@ -3750,6 +4121,10 @@ function renderBannerSlider() {
   const safeTitle = escapeHtml(currentBanner.title || 'Pengumuman Penting Yayasan');
   const safeSubtitle = escapeHtml(currentBanner.subtitle || '');
   const safeActionText = escapeHtml(currentBanner.actionText || 'Buka Tautan ↗');
+  const isSpmbAction = Boolean(
+    (currentBanner.actionUrl && (currentBanner.actionUrl.includes('psb') || currentBanner.actionUrl === '#spmb')) ||
+    (currentBanner.actionText && currentBanner.actionText.toLowerCase().includes('daftar'))
+  );
 
   container.innerHTML = `
     <div class="hero-image-banner-card fade-in" style="background-image: linear-gradient(to right, rgba(15, 23, 42, 0.88) 0%, rgba(15, 23, 42, 0.45) 100%), url('${safeImgUrl}');">
@@ -3763,7 +4138,12 @@ function renderBannerSlider() {
         ${safeSubtitle ? `<p class="banner-subtitle">${safeSubtitle}</p>` : ''}
         
         <div class="banner-actions">
-          ${currentBanner.actionUrl ? `
+          ${isSpmbAction ? `
+            <button type="button" class="btn-primary banner-cta-btn" data-action="open-spmb">
+              <span>${safeActionText}</span>
+              <i data-lucide="arrow-right" width="16" height="16"></i>
+            </button>
+          ` : currentBanner.actionUrl ? `
             <a href="${safeActionUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary banner-cta-btn">
               <span>${safeActionText}</span>
               <i data-lucide="arrow-right" width="16" height="16"></i>
@@ -3824,7 +4204,664 @@ function initBannerSlider() {
     window.addEventListener('yiqul:banners-changed', () => {
       renderBannerSlider();
     });
+
+    document.addEventListener('click', (e) => {
+      const spmbBtn = e.target.closest('[data-action="open-spmb"]');
+      if (spmbBtn) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('yiqul:open-spmb'));
+      }
+    });
   }
+}
+
+
+/* --- MODULE: src/components/SpmbModal.js --- */
+/**
+ * COMPONENT: SPMB ONLINE (PENDAFTARAN SANTRI BARU) INTERACTIVE MODAL & DIGITAL SLIP
+ * Portal Yiqul - Unified Digital Ecosystem Launcher
+ * Yayasan Islam Qudwatul Ummah (Yiqul)
+ * 
+ * Menyediakan wizard pendaftaran online multi-tahap yang ramah mobile:
+ * - Tahap 1: Data Calon Santri, Jenjang, & Riwayat Hafalan
+ * - Tahap 2: Data Orang Tua/Wali & Finansial
+ * - Tahap 3: Alamat Domisili & Riwayat Kesehatan
+ * - Tanda Terima / Bukti Digital Resmi Pendaftaran (Printable & Direct WhatsApp Confirmation)
+ */
+
+
+
+let currentStep = 1;
+let registrationResult = null;
+
+/**
+ * Buka modal formulir pendaftaran SPMB Online
+ * @param {string} prefillJenjang - 'MTs' | 'MA' | 'Tahfidz_Takhasus'
+ */
+function openSpmbModal(prefillJenjang = 'MTs') {
+  currentStep = 1;
+  registrationResult = null;
+
+  const modal = document.getElementById('spmb-modal');
+  if (!modal) return;
+
+  renderSpmbModalContent(prefillJenjang);
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    window.lucide.createIcons();
+  }
+}
+
+/**
+ * Tutup modal pendaftaran SPMB
+ */
+function closeSpmbModal() {
+  const modal = document.getElementById('spmb-modal');
+  if (modal) {
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+/**
+ * Buka langsung bukti pendaftaran digital berdasarkan ID (untuk preview admin atau cetak ulang)
+ * @param {string} id - Nomor Registrasi (SPMB-2026-XXXX)
+ */
+function openSpmbReceiptDirect(id) {
+  const reg = getRegistrationById(id);
+  if (!reg) return;
+
+  currentStep = 4;
+  registrationResult = reg;
+
+  const modal = document.getElementById('spmb-modal');
+  if (!modal) return;
+
+  renderSpmbModalContent();
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    window.lucide.createIcons();
+  }
+}
+
+/**
+ * Render konten modal SPMB sesuai tahap yang sedang aktif
+ * @param {string} prefillJenjang 
+ */
+function renderSpmbModalContent(prefillJenjang = 'MTs') {
+  const modal = document.getElementById('spmb-modal');
+  if (!modal) return;
+
+  modal.innerHTML = `
+    <div class="modal-container spmb-modal-window">
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="brand-logo-badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981;" aria-hidden="true">
+            <i data-lucide="graduation-cap" width="20" height="20"></i>
+          </div>
+          <div>
+            <h3 class="modal-title">Pendaftaran Santri Baru (SPMB 2026/2027)</h3>
+            <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">
+              Yayasan Islam Qudwatul Ummah Lebak - Banten
+            </span>
+          </div>
+        </div>
+        <button type="button" class="btn-icon" id="spmb-close-btn" aria-label="Tutup Formulir">
+          <i data-lucide="x" width="20" height="20"></i>
+        </button>
+      </div>
+
+      <!-- Step Indicator Bar (Hanya tampil jika belum submit / step 1-3) -->
+      ${currentStep <= 3 ? `
+        <div class="spmb-step-indicator" role="tablist">
+          <div class="spmb-step-item ${currentStep === 1 ? 'active' : ''} ${currentStep > 1 ? 'completed' : ''}">
+            <div class="step-num">1</div>
+            <div class="step-label">Data Calon Santri</div>
+          </div>
+          <div class="spmb-step-line ${currentStep > 1 ? 'filled' : ''}"></div>
+          <div class="spmb-step-item ${currentStep === 2 ? 'active' : ''} ${currentStep > 2 ? 'completed' : ''}">
+            <div class="step-num">2</div>
+            <div class="step-label">Orang Tua / Wali</div>
+          </div>
+          <div class="spmb-step-line ${currentStep > 2 ? 'filled' : ''}"></div>
+          <div class="spmb-step-item ${currentStep === 3 ? 'active' : ''}">
+            <div class="step-num">3</div>
+            <div class="step-label">Domisili & Kesehatan</div>
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Modal Body -->
+      <div class="spmb-modal-body">
+        ${currentStep === 1 ? renderStep1(prefillJenjang) : ''}
+        ${currentStep === 2 ? renderStep2() : ''}
+        ${currentStep === 3 ? renderStep3() : ''}
+        ${currentStep === 4 && registrationResult ? renderStepSuccess(registrationResult) : ''}
+      </div>
+    </div>
+  `;
+
+  bindSpmbEvents();
+}
+
+/**
+ * STEP 1: Pilihan Jenjang & Data Calon Santri
+ */
+function renderStep1(defaultJenjang) {
+  return `
+    <form id="spmb-step1-form" class="spmb-form-step">
+      <div class="spmb-alert-info">
+        <i data-lucide="info" width="18" height="18"></i>
+        <span>Silakan isi data calon santri dengan teliti sesuai akta kelahiran / kartu keluarga.</span>
+      </div>
+
+      <!-- Jenjang, Jalur & Hunian -->
+      <div class="form-group-grid-3">
+        <div class="form-group">
+          <label class="form-label" for="spmb-jenjang">Jenjang Pendidikan *</label>
+          <select id="spmb-jenjang" class="form-select" required>
+            <option value="MTs" ${defaultJenjang === 'MTs' ? 'selected' : ''}>MTs Qudwatul Ummah</option>
+            <option value="MA" ${defaultJenjang === 'MA' ? 'selected' : ''}>MA Qudwatul Ummah</option>
+            <option value="Tahfidz_Takhasus" ${defaultJenjang === 'Tahfidz_Takhasus' ? 'selected' : ''}>Takhasus Tahfidz Quran</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="spmb-jalur">Jalur Masuk *</label>
+          <select id="spmb-jalur" class="form-select" required>
+            <option value="Reguler">Jalur Reguler</option>
+            <option value="Prestasi">Jalur Prestasi Akademik</option>
+            <option value="Beasiswa_Tahfidz">Beasiswa Tahfidz Al-Qur'an</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="spmb-asrama">Pola Pendidikan *</label>
+          <select id="spmb-asrama" class="form-select" required>
+            <option value="Boarding">Asrama (Boarding School)</option>
+            <option value="FullDay">Non-Asrama (Full Day)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Nama Calon Santri -->
+      <div class="form-group">
+        <label class="form-label" for="spmb-nama">Nama Lengkap Calon Santri *</label>
+        <input type="text" id="spmb-nama" class="form-input" placeholder="Contoh: Muhammad Fatih Al-Ayyubi" required autocomplete="name">
+      </div>
+
+      <!-- Identitas: NISN, NIK, Kelamin -->
+      <div class="form-group-grid-3">
+        <div class="form-group">
+          <label class="form-label" for="spmb-nisn">NISN (10 Digit)</label>
+          <input type="text" id="spmb-nisn" class="form-input" placeholder="0012345678" maxlength="10" inputmode="numeric">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="spmb-nik">NIK Santri (16 Digit)</label>
+          <input type="text" id="spmb-nik" class="form-input" placeholder="3602xxxxxxxxxxxx" maxlength="16" inputmode="numeric">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="spmb-gender">Jenis Kelamin *</label>
+          <select id="spmb-gender" class="form-select" required>
+            <option value="L">Laki-laki (Ikhwan)</option>
+            <option value="P">Perempuan (Akhwat)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tempat & Tanggal Lahir -->
+      <div class="form-group-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="spmb-tempat-lahir">Tempat Lahir *</label>
+          <input type="text" id="spmb-tempat-lahir" class="form-input" placeholder="Contoh: Lebak" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="spmb-tgl-lahir">Tanggal Lahir *</label>
+          <input type="date" id="spmb-tgl-lahir" class="form-input" required>
+        </div>
+      </div>
+
+      <!-- Asal Sekolah & Riwayat Hafalan -->
+      <div class="form-group-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="spmb-asal-sekolah">Asal Sekolah / Madrasah *</label>
+          <input type="text" id="spmb-asal-sekolah" class="form-input" placeholder="Contoh: SDIT Qudwatul Ummah Lebak" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="spmb-hafalan">Riwayat Hafalan Al-Qur'an *</label>
+          <select id="spmb-hafalan" class="form-select" required>
+            <option value="Belum Ada">Belum Ada / Baru Juz Amma</option>
+            <option value="1-2 Juz">1 - 2 Juz</option>
+            <option value="3-5 Juz">3 - 5 Juz</option>
+            <option value="> 5 Juz">Lebih dari 5 Juz</option>
+            <option value="30 Juz Mutqin">Khatam 30 Juz</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="spmb-footer-actions">
+        <div></div>
+        <button type="submit" class="btn-primary" id="btn-spmb-next-1">
+          <span>Lanjut ke Data Orang Tua</span>
+          <i data-lucide="arrow-right" width="16" height="16"></i>
+        </button>
+      </div>
+    </form>
+  `;
+}
+
+/**
+ * STEP 2: Data Orang Tua / Wali & Kontak
+ */
+function renderStep2() {
+  return `
+    <form id="spmb-step2-form" class="spmb-form-step">
+      <div class="spmb-alert-info">
+        <i data-lucide="info" width="18" height="18"></i>
+        <span>Pastikan nomor WhatsApp orang tua aktif untuk menerima konfirmasi seleksi & pengumuman.</span>
+      </div>
+
+      <!-- Ayah -->
+      <div class="form-group-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="spmb-nama-ayah">Nama Lengkap Ayah Kandung *</label>
+          <input type="text" id="spmb-nama-ayah" class="form-input" placeholder="Nama lengkap Ayah beserta gelar" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="spmb-pekerjaan-ayah">Pekerjaan Ayah *</label>
+          <select id="spmb-pekerjaan-ayah" class="form-select" required>
+            <option value="PNS/TNI/Polri">PNS / TNI / Polri</option>
+            <option value="Karyawan Swasta">Karyawan Swasta</option>
+            <option value="Wiraswasta/Pedagang">Wiraswasta / Pengusaha / Pedagang</option>
+            <option value="Guru/Dosen">Guru / Dosen</option>
+            <option value="Petani/Buruh">Petani / Nelayan / Buruh</option>
+            <option value="Lainnya">Lainnya</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Ibu -->
+      <div class="form-group-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="spmb-nama-ibu">Nama Lengkap Ibu Kandung *</label>
+          <input type="text" id="spmb-nama-ibu" class="form-input" placeholder="Nama lengkap Ibu beserta gelar" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="spmb-pekerjaan-ibu">Pekerjaan Ibu *</label>
+          <select id="spmb-pekerjaan-ibu" class="form-select" required>
+            <option value="Ibu Rumah Tangga">Ibu Rumah Tangga</option>
+            <option value="PNS/TNI/Polri">PNS / TNI / Polri</option>
+            <option value="Karyawan Swasta">Karyawan Swasta</option>
+            <option value="Wiraswasta">Wiraswasta / Pengusaha</option>
+            <option value="Guru/Dosen">Guru / Dosen</option>
+            <option value="Lainnya">Lainnya</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Finansial & Kontak WhatsApp -->
+      <div class="form-group-grid-3">
+        <div class="form-group">
+          <label class="form-label" for="spmb-penghasilan">Penghasilan Ortu (Total Bulanan) *</label>
+          <select id="spmb-penghasilan" class="form-select" required>
+            <option value="< 2 Juta">&lt; Rp 2.000.000</option>
+            <option value="2 - 5 Juta" selected>Rp 2.000.000 - Rp 5.000.000</option>
+            <option value="5 - 10 Juta">Rp 5.000.000 - Rp 10.000.000</option>
+            <option value="> 10 Juta">&gt; Rp 10.000.000</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="spmb-wa">No. WhatsApp Aktif (Utama) *</label>
+          <input type="tel" id="spmb-wa" class="form-input" placeholder="Contoh: 081289123456" required autocomplete="tel" inputmode="tel">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="spmb-hubungan">Hubungan Wali</label>
+          <select id="spmb-hubungan" class="form-select">
+            <option value="Orang Tua Kandung" selected>Orang Tua Kandung</option>
+            <option value="Kakek/Nenek">Kakek / Nenek</option>
+            <option value="Paman/Bibi">Paman / Bibi</option>
+            <option value="Wali Lainnya">Wali Lainnya</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="spmb-footer-actions">
+        <button type="button" class="btn-secondary" id="btn-spmb-prev-2">
+          <i data-lucide="arrow-left" width="16" height="16"></i>
+          <span>Kembali</span>
+        </button>
+        <button type="submit" class="btn-primary" id="btn-spmb-next-2">
+          <span>Lanjut ke Domisili & Selesai</span>
+          <i data-lucide="arrow-right" width="16" height="16"></i>
+        </button>
+      </div>
+    </form>
+  `;
+}
+
+/**
+ * STEP 3: Domisili & Riwayat Kesehatan
+ */
+function renderStep3() {
+  return `
+    <form id="spmb-step3-form" class="spmb-form-step">
+      <div class="spmb-alert-info">
+        <i data-lucide="info" width="18" height="18"></i>
+        <span>Langkah terakhir: lengkapi alamat tempat tinggal domisili dan kondisi kesehatan santri.</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="spmb-alamat">Alamat Lengkap (Jalan, RT/RW, No. Rumah) *</label>
+        <textarea id="spmb-alamat" class="form-textarea" rows="2" placeholder="Contoh: Jl. Raya Rangkasbitung - Pandeglang Km. 4 RT 02/05" required></textarea>
+      </div>
+
+      <div class="form-group-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="spmb-kelurahan">Kelurahan / Desa *</label>
+          <input type="text" id="spmb-kelurahan" class="form-input" placeholder="Contoh: Cijoro Pasir" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="spmb-kecamatan">Kecamatan *</label>
+          <input type="text" id="spmb-kecamatan" class="form-input" placeholder="Contoh: Rangkasbitung" required>
+        </div>
+      </div>
+
+      <div class="form-group-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="spmb-kabupaten">Kota / Kabupaten *</label>
+          <input type="text" id="spmb-kabupaten" class="form-input" value="Kab. Lebak" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="spmb-provinsi">Provinsi *</label>
+          <input type="text" id="spmb-provinsi" class="form-input" value="Banten" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="spmb-kesehatan">Catatan Riwayat Kesehatan / Alergi Santri</label>
+        <input type="text" id="spmb-kesehatan" class="form-input" placeholder="Contoh: Tidak ada riwayat penyakit berat, alergi debu ringan, dsb.">
+      </div>
+
+      <div class="spmb-footer-actions">
+        <button type="button" class="btn-secondary" id="btn-spmb-prev-3">
+          <i data-lucide="arrow-left" width="16" height="16"></i>
+          <span>Kembali</span>
+        </button>
+        <button type="submit" class="btn-primary" id="btn-spmb-submit" style="background: #10B981; border-color: #059669;">
+          <i data-lucide="check-circle" width="16" height="16"></i>
+          <span>Kirim Pendaftaran Sekarang</span>
+        </button>
+      </div>
+    </form>
+  `;
+}
+
+/**
+ * STEP 4: Success / Bukti Pendaftaran Digital (Digital Registration Card)
+ * @param {Object} reg 
+ */
+function renderStepSuccess(reg) {
+  const waUrl = createWhatsAppConfirmationLink(reg);
+  const safeName = escapeHtml(reg.namaLengkap);
+  const safeId = escapeHtml(reg.id);
+  const safeJenjang = escapeHtml(reg.jenjang);
+  const safeJalur = escapeHtml(reg.jalur);
+  const safeAsrama = escapeHtml(reg.asrama);
+  const safeSekolah = escapeHtml(reg.asalSekolah);
+  const safeHafalan = escapeHtml(reg.riwayatHafalan);
+  const safeOrtu = escapeHtml(`${reg.namaAyah} / ${reg.namaIbu}`);
+  const safeWa = escapeHtml(reg.noWhatsapp);
+  const safeDate = new Date(reg.createdAt).toLocaleDateString('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+
+  return `
+    <div class="spmb-success-view fade-in">
+      <div class="spmb-success-header">
+        <div class="success-icon-badge">
+          <i data-lucide="check" width="32" height="32"></i>
+        </div>
+        <h3 class="success-title">Alhamdulillah! Pendaftaran Berhasil Terkirim</h3>
+        <p class="success-subtitle">
+          Data calon santri telah tersimpan aman dalam sistem pangkalan data penerimaan santri baru Yiqul.
+        </p>
+      </div>
+
+      <!-- Kartu Slip Tanda Terima Digital Resmi (Printable Slip) -->
+      <div class="spmb-receipt-slip printable-area" id="spmb-receipt-card">
+        <div class="receipt-top-banner">
+          <div class="receipt-logo-group">
+            <div class="receipt-mini-badge">YIQUL</div>
+            <div>
+              <div class="receipt-inst-name">YAYASAN ISLAM QUDWATUL UMMAH</div>
+              <div class="receipt-inst-sub">PANITIA PENERIMAAN SANTRI BARU (SPMB) T.A 2026/2027</div>
+              <div class="receipt-inst-address">Jl. Raya Rangkasbitung - Pandeglang Km. 4, Lebak - Banten</div>
+            </div>
+          </div>
+          <div class="receipt-number-badge">
+            <span class="badge-tag">NO. REGISTRASI RESMI</span>
+            <span class="badge-code">${safeId}</span>
+          </div>
+        </div>
+
+        <div class="receipt-divider"></div>
+
+        <div class="receipt-grid">
+          <div class="receipt-col">
+            <div class="receipt-field">
+              <span class="label">Nama Calon Santri:</span>
+              <strong class="value highlight">${safeName}</strong>
+            </div>
+            <div class="receipt-field">
+              <span class="label">Jenjang & Pola:</span>
+              <span class="value">${safeJenjang} (${safeAsrama})</span>
+            </div>
+            <div class="receipt-field">
+              <span class="label">Jalur Pendaftaran:</span>
+              <span class="value">${safeJalur}</span>
+            </div>
+            <div class="receipt-field">
+              <span class="label">Asal Sekolah:</span>
+              <span class="value">${safeSekolah}</span>
+            </div>
+          </div>
+
+          <div class="receipt-col">
+            <div class="receipt-field">
+              <span class="label">Riwayat Hafalan:</span>
+              <span class="value">${safeHafalan}</span>
+            </div>
+            <div class="receipt-field">
+              <span class="label">Orang Tua / Wali:</span>
+              <span class="value">${safeOrtu}</span>
+            </div>
+            <div class="receipt-field">
+              <span class="label">WhatsApp Kontak:</span>
+              <span class="value">${safeWa}</span>
+            </div>
+            <div class="receipt-field">
+              <span class="label">Tanggal Registrasi:</span>
+              <span class="value">${safeDate}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="receipt-footer-notes">
+          <div class="notes-title">Petunjuk Tes & Verifikasi Berkas:</div>
+          <ol>
+            <li>Simpan atau cetak slip tanda terima ini sebagai bukti pendaftaran resmi.</li>
+            <li>Klik tombol hijau di bawah untuk konfirmasi otomatis ke WhatsApp Panitia SPMB.</li>
+            <li>Siapkan fotokopi Akta Kelahiran, Kartu Keluarga, dan Surat Keterangan Lulus / NISN saat verifikasi.</li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="spmb-success-actions">
+        <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary btn-spmb-wa">
+          <i data-lucide="message-circle" width="18" height="18"></i>
+          <span>Konfirmasi ke WhatsApp Panitia ↗</span>
+        </a>
+
+        <button type="button" class="btn-secondary" id="btn-spmb-print">
+          <i data-lucide="printer" width="18" height="18"></i>
+          <span>Cetak Bukti Pendaftaran (PDF / Slip)</span>
+        </button>
+
+        <button type="button" class="btn-outline" id="btn-spmb-done">
+          <i data-lucide="home" width="18" height="18"></i>
+          <span>Selesai & Kembali ke Portal</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// Temporary in-memory draft data between steps
+let spmbDraft = {};
+
+/**
+ * Event handling untuk wizard form
+ */
+function bindSpmbEvents() {
+  const modal = document.getElementById('spmb-modal');
+  if (!modal) return;
+
+  // Tutup Modal
+  const closeBtn = document.getElementById('spmb-close-btn');
+  if (closeBtn) closeBtn.onclick = closeSpmbModal;
+
+  // STEP 1 Submit -> to STEP 2
+  const step1Form = document.getElementById('spmb-step1-form');
+  if (step1Form) {
+    step1Form.onsubmit = (e) => {
+      e.preventDefault();
+      spmbDraft.jenjang = document.getElementById('spmb-jenjang').value;
+      spmbDraft.jalur = document.getElementById('spmb-jalur').value;
+      spmbDraft.asrama = document.getElementById('spmb-asrama').value;
+      spmbDraft.namaLengkap = document.getElementById('spmb-nama').value;
+      spmbDraft.nisn = document.getElementById('spmb-nisn').value;
+      spmbDraft.nikSantri = document.getElementById('spmb-nik').value;
+      spmbDraft.jenisKelamin = document.getElementById('spmb-gender').value;
+      spmbDraft.tempatLahir = document.getElementById('spmb-tempat-lahir').value;
+      spmbDraft.tanggalLahir = document.getElementById('spmb-tgl-lahir').value;
+      spmbDraft.asalSekolah = document.getElementById('spmb-asal-sekolah').value;
+      spmbDraft.riwayatHafalan = document.getElementById('spmb-hafalan').value;
+
+      currentStep = 2;
+      renderSpmbModalContent();
+    };
+  }
+
+  // STEP 2 Back -> to STEP 1
+  const prevBtn2 = document.getElementById('btn-spmb-prev-2');
+  if (prevBtn2) {
+    prevBtn2.onclick = () => {
+      currentStep = 1;
+      renderSpmbModalContent();
+    };
+  }
+
+  // STEP 2 Submit -> to STEP 3
+  const step2Form = document.getElementById('spmb-step2-form');
+  if (step2Form) {
+    step2Form.onsubmit = (e) => {
+      e.preventDefault();
+      spmbDraft.namaAyah = document.getElementById('spmb-nama-ayah').value;
+      spmbDraft.pekerjaanAyah = document.getElementById('spmb-pekerjaan-ayah').value;
+      spmbDraft.namaIbu = document.getElementById('spmb-nama-ibu').value;
+      spmbDraft.pekerjaanIbu = document.getElementById('spmb-pekerjaan-ibu').value;
+      spmbDraft.penghasilanOrtu = document.getElementById('spmb-penghasilan').value;
+      spmbDraft.noWhatsapp = document.getElementById('spmb-wa').value;
+      spmbDraft.hubunganWali = document.getElementById('spmb-hubungan').value;
+
+      currentStep = 3;
+      renderSpmbModalContent();
+    };
+  }
+
+  // STEP 3 Back -> to STEP 2
+  const prevBtn3 = document.getElementById('btn-spmb-prev-3');
+  if (prevBtn3) {
+    prevBtn3.onclick = () => {
+      currentStep = 2;
+      renderSpmbModalContent();
+    };
+  }
+
+  // STEP 3 Final Submit -> Save & Show Success
+  const step3Form = document.getElementById('spmb-step3-form');
+  if (step3Form) {
+    step3Form.onsubmit = (e) => {
+      e.preventDefault();
+      spmbDraft.alamatLengkap = document.getElementById('spmb-alamat').value;
+      spmbDraft.kelurahanDesa = document.getElementById('spmb-kelurahan').value;
+      spmbDraft.kecamatan = document.getElementById('spmb-kecamatan').value;
+      spmbDraft.kotaKabupaten = document.getElementById('spmb-kabupaten').value;
+      spmbDraft.provinsi = document.getElementById('spmb-provinsi').value;
+      spmbDraft.catatanKesehatan = document.getElementById('spmb-kesehatan').value;
+
+      // Register new student into SPMB database
+      registrationResult = registerNewStudent(spmbDraft);
+      currentStep = 4;
+      renderSpmbModalContent();
+    };
+  }
+
+  // STEP 4 Print
+  const printBtn = document.getElementById('btn-spmb-print');
+  if (printBtn) {
+    printBtn.onclick = () => {
+      window.print();
+    };
+  }
+
+  // STEP 4 Done
+  const doneBtn = document.getElementById('btn-spmb-done');
+  if (doneBtn) {
+    doneBtn.onclick = () => {
+      closeSpmbModal();
+    };
+  }
+}
+
+/**
+ * Inisialisasi event listener global untuk pemicu modal SPMB
+ */
+function initSpmbModal() {
+  // Backdrop click to close
+  const modal = document.getElementById('spmb-modal');
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeSpmbModal();
+      }
+    });
+  }
+
+  // Tangkap event global pemicu SPMB
+  window.addEventListener('yiqul:open-spmb', (e) => {
+    const jenjang = (e.detail && e.detail.jenjang) || 'MTs';
+    openSpmbModal(jenjang);
+  });
 }
 
 
@@ -4060,6 +5097,8 @@ function createFileUploader({
 
 
 
+
+
 let activeTab = 'apps'; // 'apps' | 'banners' | 'branding' | 'docs' | 'role'
 let appLogoUploader = null;
 let bannerImageUploader = null;
@@ -4173,6 +5212,8 @@ function renderActiveTabContent() {
     renderTabDocuments(contentArea);
   } else if (activeTab === 'role') {
     renderTabRoleSettings(contentArea);
+  } else if (activeTab === 'spmb') {
+    renderTabSpmb(contentArea);
   }
 
   if (window.lucide && typeof window.lucide.createIcons === 'function') {
@@ -5342,6 +6383,306 @@ function renderTabRoleSettings(container) {
   }
 }
 
+/* ==========================================================================
+   TAB 6: SPMB ONLINE (MANAJEMEN PENDAFTARAN SANTRI BARU)
+   ========================================================================== */
+let spmbSearchQuery = '';
+let spmbFilterJenjang = 'all';
+let spmbFilterStatus = 'all';
+
+function renderTabSpmb(container) {
+  const summary = getSpmbSummary();
+  const allRegistrations = getAllRegistrations();
+
+  const filtered = allRegistrations.filter(r => {
+    if (spmbFilterJenjang !== 'all' && r.jenjang !== spmbFilterJenjang) return false;
+    if (spmbFilterStatus !== 'all' && r.status !== spmbFilterStatus) return false;
+    if (spmbSearchQuery) {
+      const q = spmbSearchQuery.toLowerCase();
+      const match = (r.namaLengkap && r.namaLengkap.toLowerCase().includes(q)) ||
+                    (r.id && r.id.toLowerCase().includes(q)) ||
+                    (r.nisn && r.nisn.includes(q)) ||
+                    (r.asalSekolah && r.asalSekolah.toLowerCase().includes(q)) ||
+                    (r.namaAyah && r.namaAyah.toLowerCase().includes(q)) ||
+                    (r.namaIbu && r.namaIbu.toLowerCase().includes(q));
+      if (!match) return false;
+    }
+    return true;
+  });
+
+  container.innerHTML = `
+    <div class="spmb-admin-container">
+      <!-- 1. Header & Summary Metric Cards -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+          <h3 class="admin-pane-title" style="margin-bottom: 0.25rem;">
+            <i data-lucide="graduation-cap" width="20" height="20" style="color: #10B981;"></i>
+            <span>Penerimaan Santri Baru (SPMB 2026/2027)</span>
+          </h3>
+          <p style="font-size: 0.8125rem; color: var(--text-secondary); margin: 0;">
+            Kelola pendaftaran santri terpadu jenjang MTs, MA, & Takhasus Tahfidz Yayasan Islam Qudwatul Ummah.
+          </p>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button type="button" class="btn-primary" id="btn-spmb-open-new" style="background: #10B981; font-size: 0.8125rem; padding: 0.45rem 0.85rem;">
+            <i data-lucide="plus" width="15" height="15"></i>
+            <span>Daftar Santri Baru</span>
+          </button>
+          <button type="button" class="btn-secondary" id="btn-spmb-export-csv" style="font-size: 0.8125rem; padding: 0.45rem 0.85rem;">
+            <i data-lucide="download" width="15" height="15"></i>
+            <span>Unduh CSV / Excel</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Stat Cards Grid -->
+      <div class="spmb-stat-grid">
+        <div class="spmb-stat-card">
+          <div class="stat-number">${summary.total}</div>
+          <div class="stat-title">Total Pendaftar</div>
+        </div>
+        <div class="spmb-stat-card">
+          <div class="stat-number" style="color: #3B82F6;">${summary.mts}</div>
+          <div class="stat-title">Jenjang MTs</div>
+        </div>
+        <div class="spmb-stat-card">
+          <div class="stat-number" style="color: #8B5CF6;">${summary.ma}</div>
+          <div class="stat-title">Jenjang MA</div>
+        </div>
+        <div class="spmb-stat-card">
+          <div class="stat-number" style="color: #10B981;">${summary.tahfidz}</div>
+          <div class="stat-title">Takhasus Tahfidz</div>
+        </div>
+        <div class="spmb-stat-card">
+          <div class="stat-number" style="color: #F59E0B;">${summary.pending}</div>
+          <div class="stat-title">Menunggu Verifikasi</div>
+        </div>
+        <div class="spmb-stat-card">
+          <div class="stat-number" style="color: #059669;">${summary.accepted}</div>
+          <div class="stat-title">Lolos / Diterima</div>
+        </div>
+      </div>
+
+      <!-- 2. Toolbar Filter & Live Search -->
+      <div class="spmb-toolbar">
+        <div class="spmb-search-box">
+          <i data-lucide="search" width="16" height="16"></i>
+          <input 
+            type="search" 
+            id="spmb-search-input" 
+            placeholder="Cari nama santri, NISN, sekolah, no. reg..." 
+            value="${escapeHtml(spmbSearchQuery)}"
+          />
+        </div>
+
+        <div class="spmb-filter-group">
+          <select id="spmb-filter-jenjang" class="form-select" style="font-size: 0.8125rem; padding: 0.4rem 0.65rem;">
+            <option value="all" ${spmbFilterJenjang === 'all' ? 'selected' : ''}>Semua Jenjang</option>
+            <option value="MTs" ${spmbFilterJenjang === 'MTs' ? 'selected' : ''}>MTs</option>
+            <option value="MA" ${spmbFilterJenjang === 'MA' ? 'selected' : ''}>MA</option>
+            <option value="Tahfidz_Takhasus" ${spmbFilterJenjang === 'Tahfidz_Takhasus' ? 'selected' : ''}>Takhasus Tahfidz</option>
+          </select>
+
+          <select id="spmb-filter-status" class="form-select" style="font-size: 0.8125rem; padding: 0.4rem 0.65rem;">
+            <option value="all" ${spmbFilterStatus === 'all' ? 'selected' : ''}>Semua Status</option>
+            <option value="pending" ${spmbFilterStatus === 'pending' ? 'selected' : ''}>Menunggu (Pending)</option>
+            <option value="verified" ${spmbFilterStatus === 'verified' ? 'selected' : ''}>Terverifikasi</option>
+            <option value="accepted" ${spmbFilterStatus === 'accepted' ? 'selected' : ''}>Lolos / Diterima</option>
+            <option value="rejected" ${spmbFilterStatus === 'rejected' ? 'selected' : ''}>Ditolak</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 3. Applicants Table -->
+      <div class="spmb-table-responsive">
+        ${filtered.length === 0 ? `
+          <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-secondary);">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">📋</div>
+            <h4 style="font-weight: 600; font-size: 1rem; margin-bottom: 0.25rem;">Tidak Ada Data Pendaftar</h4>
+            <p style="font-size: 0.8125rem;">Tidak ada pendaftar yang sesuai kriteria pencarian / filter.</p>
+          </div>
+        ` : `
+          <table class="spmb-admin-table">
+            <thead>
+              <tr>
+                <th>No. Registrasi</th>
+                <th>Calon Santri & Asal Sekolah</th>
+                <th>Jenjang / Jalur</th>
+                <th>Orang Tua & WhatsApp</th>
+                <th>Status Verifikasi</th>
+                <th style="text-align: right;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filtered.map(r => {
+                const waUrl = createWhatsAppConfirmationLink(r);
+                return `
+                  <tr>
+                    <td>
+                      <span class="spmb-reg-code">${escapeHtml(r.id)}</span>
+                      <div class="spmb-table-subtext">${new Date(r.createdAt).toLocaleDateString('id-ID')}</div>
+                    </td>
+                    <td>
+                      <div class="spmb-student-name">
+                        ${escapeHtml(r.namaLengkap)}
+                        <span class="spmb-gender-badge ${r.jenisKelamin === 'L' ? 'male' : 'female'}">
+                          ${r.jenisKelamin === 'L' ? 'L' : 'P'}
+                        </span>
+                      </div>
+                      <div class="spmb-table-subtext">NISN: ${escapeHtml(r.nisn || '-')} • ${escapeHtml(r.asalSekolah)}</div>
+                      <div class="spmb-table-subtext" style="color: #10B981; font-weight: 500;">Hafalan: ${escapeHtml(r.riwayatHafalan)}</div>
+                    </td>
+                    <td>
+                      <span class="spmb-jenjang-badge">${escapeHtml(r.jenjang)}</span>
+                      <div class="spmb-table-subtext">${escapeHtml(r.jalur)} (${escapeHtml(r.asrama)})</div>
+                    </td>
+                    <td>
+                      <div style="font-weight: 600; font-size: 0.8125rem;">${escapeHtml(r.namaAyah || r.namaIbu || '-')}</div>
+                      <div class="spmb-table-subtext">Penghasilan: ${escapeHtml(r.penghasilanOrtu)}</div>
+                      <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="spmb-wa-inline">
+                        <i data-lucide="message-circle" width="13" height="13"></i>
+                        <span>${escapeHtml(r.noWhatsapp)}</span>
+                      </a>
+                    </td>
+                    <td>
+                      <select class="spmb-status-select ${r.status}" data-action="change-spmb-status" data-id="${r.id}">
+                        <option value="pending" ${r.status === 'pending' ? 'selected' : ''}>🟡 Menunggu</option>
+                        <option value="verified" ${r.status === 'verified' ? 'selected' : ''}>🔵 Terverifikasi</option>
+                        <option value="accepted" ${r.status === 'accepted' ? 'selected' : ''}>🟢 Diterima</option>
+                        <option value="rejected" ${r.status === 'rejected' ? 'selected' : ''}>🔴 Ditolak</option>
+                      </select>
+                    </td>
+                    <td style="text-align: right; white-space: nowrap;">
+                      <button type="button" class="btn-icon" data-action="print-spmb-card" data-id="${r.id}" title="Cetak Bukti Pendaftaran">
+                        <i data-lucide="printer" width="15" height="15"></i>
+                      </button>
+                      <button type="button" class="btn-icon" data-action="note-spmb" data-id="${r.id}" title="Catatan Panitia">
+                        <i data-lucide="edit-3" width="15" height="15"></i>
+                      </button>
+                      <button type="button" class="btn-icon btn-icon-danger" data-action="delete-spmb" data-id="${r.id}" title="Hapus Pendaftar">
+                        <i data-lucide="trash-2" width="15" height="15"></i>
+                      </button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        `}
+      </div>
+    </div>
+  `;
+
+  bindTabSpmbEvents(container);
+}
+
+/**
+ * Event bindings untuk Tab SPMB
+ */
+function bindTabSpmbEvents(container) {
+  // 1. Search Query Input
+  const searchInput = document.getElementById('spmb-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      spmbSearchQuery = e.target.value.trim();
+      renderTabSpmb(container);
+      const reFocus = document.getElementById('spmb-search-input');
+      if (reFocus) {
+        reFocus.focus();
+        reFocus.setSelectionRange(reFocus.value.length, reFocus.value.length);
+      }
+    });
+  }
+
+  // 2. Filter Jenjang
+  const filterJenjang = document.getElementById('spmb-filter-jenjang');
+  if (filterJenjang) {
+    filterJenjang.addEventListener('change', (e) => {
+      spmbFilterJenjang = e.target.value;
+      renderTabSpmb(container);
+    });
+  }
+
+  // 3. Filter Status
+  const filterStatus = document.getElementById('spmb-filter-status');
+  if (filterStatus) {
+    filterStatus.addEventListener('change', (e) => {
+      spmbFilterStatus = e.target.value;
+      renderTabSpmb(container);
+    });
+  }
+
+  // 4. Unduh Rekap CSV
+  const exportBtn = document.getElementById('btn-spmb-export-csv');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', () => {
+      const csvContent = exportRegistrationsCsv();
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Rekap_SPMB_Yiqul_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  // 5. Buka Formulir Pendaftaran Baru
+  const openNewBtn = document.getElementById('btn-spmb-open-new');
+  if (openNewBtn) {
+    openNewBtn.addEventListener('click', () => {
+      openSpmbModal('MTs');
+    });
+  }
+
+  // 6. Ubah Status Pendaftar
+  container.querySelectorAll('[data-action="change-spmb-status"]').forEach(selectEl => {
+    selectEl.addEventListener('change', (e) => {
+      const id = selectEl.getAttribute('data-id');
+      const newStatus = selectEl.value;
+      updateRegistrationStatus(id, newStatus);
+      renderTabSpmb(container);
+    });
+  });
+
+  // 7. Cetak Bukti Pendaftaran
+  container.querySelectorAll('[data-action="print-spmb-card"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-id');
+      openSpmbReceiptDirect(id);
+    });
+  });
+
+  // 8. Catatan Panitia
+  container.querySelectorAll('[data-action="note-spmb"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-id');
+      const list = getAllRegistrations();
+      const current = list.find(r => r.id === id);
+      const currentNote = (current && current.adminNotes) || '';
+      const newNote = prompt(`Catatan Panitia untuk santri ${current ? current.namaLengkap : id}:`, currentNote);
+      if (newNote !== null) {
+        updateRegistrationStatus(id, current.status, newNote);
+        renderTabSpmb(container);
+      }
+    });
+  });
+
+  // 9. Hapus Pendaftar
+  container.querySelectorAll('[data-action="delete-spmb"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-id');
+      if (confirm(`Apakah Anda yakin ingin menghapus data pendaftar ${id}? Tindakan ini tidak dapat dibatalkan.`)) {
+        deleteRegistration(id);
+        renderTabSpmb(container);
+      }
+    });
+  });
+}
+
 /**
  * Inisialisasi Admin Panel Controller
  */
@@ -5960,6 +7301,7 @@ async function triggerInstallPrompt() {
 
 
 
+
 /**
  * Update rendering katalog Bento Grid berdasarkan filter saat ini
  */
@@ -6044,8 +7386,11 @@ function bootstrap() {
   // 5. Inisialisasi Banner Promosi Bergambar (Hero Slider)
   initBannerSlider();
 
-  // 6. Inisialisasi Admin Panel 5 Tab Terpadu & Role Gate
+  // 6. Inisialisasi Admin Panel 6 Tab Terpadu & Role Gate
   initAdminPanel();
+
+  // 6b. Inisialisasi SPMB Online Modal & Pendaftaran Santri Baru
+  initSpmbModal();
 
   // 7. Inisialisasi Event Delegation Kartu Bento
   initBentoGridEvents({

@@ -44,6 +44,10 @@ export function renderBannerSlider() {
   const safeTitle = escapeHtml(currentBanner.title || 'Pengumuman Penting Yayasan');
   const safeSubtitle = escapeHtml(currentBanner.subtitle || '');
   const safeActionText = escapeHtml(currentBanner.actionText || 'Buka Tautan ↗');
+  const isSpmbAction = Boolean(
+    (currentBanner.actionUrl && (currentBanner.actionUrl.includes('psb') || currentBanner.actionUrl === '#spmb')) ||
+    (currentBanner.actionText && currentBanner.actionText.toLowerCase().includes('daftar'))
+  );
 
   container.innerHTML = `
     <div class="hero-image-banner-card fade-in" style="background-image: linear-gradient(to right, rgba(15, 23, 42, 0.88) 0%, rgba(15, 23, 42, 0.45) 100%), url('${safeImgUrl}');">
@@ -57,7 +61,12 @@ export function renderBannerSlider() {
         ${safeSubtitle ? `<p class="banner-subtitle">${safeSubtitle}</p>` : ''}
         
         <div class="banner-actions">
-          ${currentBanner.actionUrl ? `
+          ${isSpmbAction ? `
+            <button type="button" class="btn-primary banner-cta-btn" data-action="open-spmb">
+              <span>${safeActionText}</span>
+              <i data-lucide="arrow-right" width="16" height="16"></i>
+            </button>
+          ` : currentBanner.actionUrl ? `
             <a href="${safeActionUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary banner-cta-btn">
               <span>${safeActionText}</span>
               <i data-lucide="arrow-right" width="16" height="16"></i>
@@ -117,6 +126,14 @@ export function initBannerSlider() {
   if (typeof window !== 'undefined') {
     window.addEventListener('yiqul:banners-changed', () => {
       renderBannerSlider();
+    });
+
+    document.addEventListener('click', (e) => {
+      const spmbBtn = e.target.closest('[data-action="open-spmb"]');
+      if (spmbBtn) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('yiqul:open-spmb'));
+      }
     });
   }
 }

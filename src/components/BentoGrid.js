@@ -285,6 +285,18 @@ export function initBentoGridEvents({ onOpenModal, onEditApp }) {
       }
     }
 
+    // 2c. SPMB Direct Launch Form
+    const spmbBtn = e.target.closest('[data-action="open-spmb"]');
+    if (spmbBtn) {
+      e.preventDefault();
+      const appId = spmbBtn.getAttribute('data-app-id');
+      if (appId) {
+        recordAppLaunch(appId);
+      }
+      window.dispatchEvent(new CustomEvent('yiqul:open-spmb'));
+      return;
+    }
+
     // 3. Edit App (Admin)
     const editBtn = e.target.closest('[data-action="edit-app"]');
     if (editBtn) {

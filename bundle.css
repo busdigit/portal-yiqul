@@ -1893,6 +1893,576 @@ html.dark .admin-item-thumb {
   }
 }
 
+/* ==========================================================================
+   SPMB ONLINE (PENDAFTARAN SANTRI BARU) MULTI-STEP MODAL & DIGITAL SLIP
+   ========================================================================== */
+
+.spmb-modal-window {
+  max-width: 800px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+}
+
+.spmb-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Step Indicator Bar */
+.spmb-step-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+html.dark .spmb-step-indicator {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.spmb-step-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.spmb-step-item.active {
+  color: var(--color-primary-600);
+}
+
+.spmb-step-item.completed {
+  color: #10B981;
+}
+
+.spmb-step-item .step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--border-color);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.spmb-step-item.active .step-num {
+  background: var(--color-primary-600);
+  color: #FFFFFF;
+}
+
+.spmb-step-item.completed .step-num {
+  background: #10B981;
+  color: #FFFFFF;
+}
+
+.spmb-step-line {
+  flex: 1;
+  height: 2px;
+  background: var(--border-color);
+  margin: 0 0.75rem;
+}
+
+.spmb-step-line.filled {
+  background: #10B981;
+}
+
+/* Responsive Step Labels on Mobile */
+@media (max-width: 580px) {
+  .spmb-step-item .step-label {
+    display: none;
+  }
+}
+
+/* Form Styles & Grid */
+.spmb-form-step {
+  display: flex;
+  flex-direction: column;
+  gap: 1.125rem;
+}
+
+.spmb-alert-info {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.8125rem;
+  color: #047857;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  line-height: 1.4;
+}
+
+html.dark .spmb-alert-info {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34D399;
+}
+
+.form-group-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.form-group-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.875rem;
+}
+
+@media (max-width: 640px) {
+  .form-group-grid-2,
+  .form-group-grid-3 {
+    grid-template-columns: 1fr;
+    gap: 0.875rem;
+  }
+}
+
+.spmb-footer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  gap: 0.75rem;
+}
+
+/* Success View & Digital Proof Slip */
+.spmb-success-view {
+  text-align: center;
+}
+
+.spmb-success-header {
+  margin-bottom: 1.25rem;
+}
+
+.success-icon-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10B981;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.success-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.35rem;
+}
+
+.success-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  max-width: 480px;
+  margin: 0 auto;
+  line-height: 1.4;
+}
+
+/* Official Printable Registration Slip */
+.spmb-receipt-slip {
+  background: #FFFFFF;
+  color: #0F172A;
+  border: 2px solid #10B981;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1.25rem 0;
+  text-align: left;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.receipt-top-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.receipt-logo-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.receipt-mini-badge {
+  font-weight: 800;
+  font-size: 0.85rem;
+  background: #0F172A;
+  color: #FFFFFF;
+  padding: 0.4rem 0.65rem;
+  border-radius: 6px;
+  letter-spacing: 1px;
+}
+
+.receipt-inst-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: 0.5px;
+}
+
+.receipt-inst-sub {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #047857;
+}
+
+.receipt-inst-address {
+  font-size: 0.7rem;
+  color: #64748B;
+}
+
+.receipt-number-badge {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1.5px dashed #10B981;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  text-align: right;
+}
+
+.receipt-number-badge .badge-tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #047857;
+  display: block;
+}
+
+.receipt-number-badge .badge-code {
+  font-family: monospace;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0F172A;
+}
+
+.receipt-divider {
+  height: 2px;
+  background: #E2E8F0;
+  margin: 1rem 0;
+}
+
+.receipt-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+@media (max-width: 580px) {
+  .receipt-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  .receipt-number-badge {
+    text-align: left;
+    width: 100%;
+  }
+}
+
+.receipt-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-bottom: 0.55rem;
+  font-size: 0.8125rem;
+}
+
+.receipt-field .label {
+  color: #64748B;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.receipt-field .value {
+  color: #0F172A;
+  font-weight: 600;
+}
+
+.receipt-field .value.highlight {
+  font-size: 0.95rem;
+  color: #047857;
+  font-weight: 800;
+}
+
+.receipt-footer-notes {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed #CBD5E1;
+  font-size: 0.75rem;
+  color: #475569;
+}
+
+.receipt-footer-notes .notes-title {
+  font-weight: 700;
+  color: #0F172A;
+  margin-bottom: 0.25rem;
+}
+
+.receipt-footer-notes ol {
+  margin: 0.25rem 0 0 1.25rem;
+  padding: 0;
+  line-height: 1.4;
+}
+
+.spmb-success-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-spmb-wa {
+  background: #25D366 !important;
+  border-color: #20BA5A !important;
+  color: #FFFFFF !important;
+}
+
+.btn-spmb-wa:hover {
+  background: #20BA5A !important;
+}
+
+/* Print CSS */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  #spmb-receipt-card, #spmb-receipt-card * {
+    visibility: visible !important;
+  }
+  #spmb-receipt-card {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    border: 1px solid #000 !important;
+    box-shadow: none !important;
+    background: #FFFFFF !important;
+    color: #000000 !important;
+  }
+}
+
+/* ==========================================================================
+   SPMB ADMIN PANEL STYLES
+   ========================================================================== */
+
+.spmb-admin-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.spmb-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.spmb-stat-card {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.spmb-stat-card .stat-number {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.spmb-stat-card .stat-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-top: 0.2rem;
+}
+
+.spmb-toolbar {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.spmb-search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.35rem 0.75rem;
+  flex: 1;
+  min-width: 220px;
+}
+
+.spmb-search-box input {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+}
+
+.spmb-filter-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.spmb-table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-surface);
+}
+
+.spmb-admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  text-align: left;
+}
+
+.spmb-admin-table th {
+  background: var(--bg-surface-elevated);
+  padding: 0.75rem 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.spmb-admin-table td {
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.spmb-reg-code {
+  font-family: monospace;
+  font-weight: 700;
+  color: var(--color-primary-600);
+  background: rgba(16, 185, 129, 0.08);
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+}
+
+.spmb-student-name {
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+}
+
+.spmb-gender-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  display: inline-block;
+  margin-left: 0.35rem;
+}
+
+.spmb-gender-badge.male {
+  background: rgba(59, 130, 246, 0.15);
+  color: #2563EB;
+}
+
+.spmb-gender-badge.female {
+  background: rgba(236, 72, 153, 0.15);
+  color: #DB2777;
+}
+
+.spmb-jenjang-badge {
+  display: inline-block;
+  font-size: 0.725rem;
+  font-weight: 700;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-color);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  color: var(--text-primary);
+}
+
+.spmb-table-subtext {
+  font-size: 0.725rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.spmb-status-select {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.spmb-status-select.pending {
+  border-color: #F59E0B;
+  color: #D97706;
+}
+
+.spmb-status-select.verified {
+  border-color: #3B82F6;
+  color: #2563EB;
+}
+
+.spmb-status-select.accepted {
+  border-color: #10B981;
+  color: #059669;
+}
+
+.spmb-status-select.rejected {
+  border-color: #EF4444;
+  color: #DC2626;
+}
+
+.spmb-wa-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: #10B981;
+  font-weight: 600;
+  text-decoration: none;
+  margin-top: 0.2rem;
+}
+
+.spmb-wa-inline:hover {
+  text-decoration: underline;
+}
+
 
 /**
  * LANDING PAGE STYLESHEET (TECHWITPRO STYLE)

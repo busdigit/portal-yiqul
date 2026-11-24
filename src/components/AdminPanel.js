@@ -61,6 +61,15 @@ import {
   pullFromFirebase,
   testFirebaseConnection
 } from '../services/firebaseService.js';
+import {
+  getAllRegistrations,
+  updateRegistrationStatus,
+  deleteRegistration,
+  getSpmbSummary,
+  exportRegistrationsCsv,
+  createWhatsAppConfirmationLink
+} from '../services/spmbService.js';
+import { openSpmbReceiptDirect, openSpmbModal } from './SpmbModal.js';
 
 let activeTab = 'apps'; // 'apps' | 'banners' | 'branding' | 'docs' | 'role'
 let appLogoUploader = null;
@@ -175,6 +184,8 @@ export function renderActiveTabContent() {
     renderTabDocuments(contentArea);
   } else if (activeTab === 'role') {
     renderTabRoleSettings(contentArea);
+  } else if (activeTab === 'spmb') {
+    renderTabSpmb(contentArea);
   }
 
   if (window.lucide && typeof window.lucide.createIcons === 'function') {
@@ -1342,6 +1353,306 @@ function renderTabRoleSettings(container) {
       }
     });
   }
+}
+
+/* ==========================================================================
+   TAB 6: SPMB ONLINE (MANAJEMEN PENDAFTARAN SANTRI BARU)
+   ========================================================================== */
+let spmbSearchQuery = '';
+let spmbFilterJenjang = 'all';
+let spmbFilterStatus = 'all';
+
+function renderTabSpmb(container) {
+  const summary = getSpmbSummary();
+  const allRegistrations = getAllRegistrations();
+
+  const filtered = allRegistrations.filter(r => {
+    if (spmbFilterJenjang !== 'all' && r.jenjang !== spmbFilterJenjang) return false;
+    if (spmbFilterStatus !== 'all' && r.status !== spmbFilterStatus) return false;
+    if (spmbSearchQuery) {
+      const q = spmbSearchQuery.toLowerCase();
+      const match = (r.namaLengkap && r.namaLengkap.toLowerCase().includes(q)) ||
+                    (r.id && r.id.toLowerCase().includes(q)) ||
+                    (r.nisn && r.nisn.includes(q)) ||
+                    (r.asalSekolah && r.asalSekolah.toLowerCase().includes(q)) ||
+                    (r.namaAyah && r.namaAyah.toLowerCase().includes(q)) ||
+                    (r.namaIbu && r.namaIbu.toLowerCase().includes(q));
+      if (!match) return false;
+    }
+    return true;
+  });
+
+  container.innerHTML = `
+    <div class="spmb-admin-container">
+      <!-- 1. Header & Summary Metric Cards -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+          <h3 class="admin-pane-title" style="margin-bottom: 0.25rem;">
+            <i data-lucide="graduation-cap" width="20" height="20" style="color: #10B981;"></i>
+            <span>Penerimaan Santri Baru (SPMB 2026/2027)</span>
+          </h3>
+          <p style="font-size: 0.8125rem; color: var(--text-secondary); margin: 0;">
+            Kelola pendaftaran santri terpadu jenjang MTs, MA, & Takhasus Tahfidz Yayasan Islam Qudwatul Ummah.
+          </p>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button type="button" class="btn-primary" id="btn-spmb-open-new" style="background: #10B981; font-size: 0.8125rem; padding: 0.45rem 0.85rem;">
+            <i data-lucide="plus" width="15" height="15"></i>
+            <span>Daftar Santri Baru</span>
+          </button>
+          <button type="button" class="btn-secondary" id="btn-spmb-export-csv" style="font-size: 0.8125rem; padding: 0.45rem 0.85rem;">
+            <i data-lucide="download" width="15" height="15"></i>
+            <span>Unduh CSV / Excel</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Stat Cards Grid -->
+      <div class="spmb-stat-grid">
+        <div class="spmb-stat-card">
+          <div class="stat-number">${summary.total}</div>
+          <div class="stat-title">Total Pendaftar</div>
+        </div>
+        <div class="spmb-stat-card">
+          <div class="stat-number" style="color: #3B82F6;">${summary.mts}</div>
+          <div class="stat-title">Jenjang MTs</div>
+        </div>
+        <div class="spmb-stat-card">
+          <div class="stat-number" style="color: #8B5CF6;">${summary.ma}</div>
+          <div class="stat-title">Jenjang MA</div>
+        </div>
+        <div class="spmb-stat-card">
+          <div class="stat-number" style="color: #10B981;">${summary.tahfidz}</div>
+          <div class="stat-title">Takhasus Tahfidz</div>
+        </div>
+        <div class="spmb-stat-card">
+          <div class="stat-number" style="color: #F59E0B;">${summary.pending}</div>
+          <div class="stat-title">Menunggu Verifikasi</div>
+        </div>
+        <div class="spmb-stat-card">
+          <div class="stat-number" style="color: #059669;">${summary.accepted}</div>
+          <div class="stat-title">Lolos / Diterima</div>
+        </div>
+      </div>
+
+      <!-- 2. Toolbar Filter & Live Search -->
+      <div class="spmb-toolbar">
+        <div class="spmb-search-box">
+          <i data-lucide="search" width="16" height="16"></i>
+          <input 
+            type="search" 
+            id="spmb-search-input" 
+            placeholder="Cari nama santri, NISN, sekolah, no. reg..." 
+            value="${escapeHtml(spmbSearchQuery)}"
+          />
+        </div>
+
+        <div class="spmb-filter-group">
+          <select id="spmb-filter-jenjang" class="form-select" style="font-size: 0.8125rem; padding: 0.4rem 0.65rem;">
+            <option value="all" ${spmbFilterJenjang === 'all' ? 'selected' : ''}>Semua Jenjang</option>
+            <option value="MTs" ${spmbFilterJenjang === 'MTs' ? 'selected' : ''}>MTs</option>
+            <option value="MA" ${spmbFilterJenjang === 'MA' ? 'selected' : ''}>MA</option>
+            <option value="Tahfidz_Takhasus" ${spmbFilterJenjang === 'Tahfidz_Takhasus' ? 'selected' : ''}>Takhasus Tahfidz</option>
+          </select>
+
+          <select id="spmb-filter-status" class="form-select" style="font-size: 0.8125rem; padding: 0.4rem 0.65rem;">
+            <option value="all" ${spmbFilterStatus === 'all' ? 'selected' : ''}>Semua Status</option>
+            <option value="pending" ${spmbFilterStatus === 'pending' ? 'selected' : ''}>Menunggu (Pending)</option>
+            <option value="verified" ${spmbFilterStatus === 'verified' ? 'selected' : ''}>Terverifikasi</option>
+            <option value="accepted" ${spmbFilterStatus === 'accepted' ? 'selected' : ''}>Lolos / Diterima</option>
+            <option value="rejected" ${spmbFilterStatus === 'rejected' ? 'selected' : ''}>Ditolak</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 3. Applicants Table -->
+      <div class="spmb-table-responsive">
+        ${filtered.length === 0 ? `
+          <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-secondary);">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">📋</div>
+            <h4 style="font-weight: 600; font-size: 1rem; margin-bottom: 0.25rem;">Tidak Ada Data Pendaftar</h4>
+            <p style="font-size: 0.8125rem;">Tidak ada pendaftar yang sesuai kriteria pencarian / filter.</p>
+          </div>
+        ` : `
+          <table class="spmb-admin-table">
+            <thead>
+              <tr>
+                <th>No. Registrasi</th>
+                <th>Calon Santri & Asal Sekolah</th>
+                <th>Jenjang / Jalur</th>
+                <th>Orang Tua & WhatsApp</th>
+                <th>Status Verifikasi</th>
+                <th style="text-align: right;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filtered.map(r => {
+                const waUrl = createWhatsAppConfirmationLink(r);
+                return `
+                  <tr>
+                    <td>
+                      <span class="spmb-reg-code">${escapeHtml(r.id)}</span>
+                      <div class="spmb-table-subtext">${new Date(r.createdAt).toLocaleDateString('id-ID')}</div>
+                    </td>
+                    <td>
+                      <div class="spmb-student-name">
+                        ${escapeHtml(r.namaLengkap)}
+                        <span class="spmb-gender-badge ${r.jenisKelamin === 'L' ? 'male' : 'female'}">
+                          ${r.jenisKelamin === 'L' ? 'L' : 'P'}
+                        </span>
+                      </div>
+                      <div class="spmb-table-subtext">NISN: ${escapeHtml(r.nisn || '-')} • ${escapeHtml(r.asalSekolah)}</div>
+                      <div class="spmb-table-subtext" style="color: #10B981; font-weight: 500;">Hafalan: ${escapeHtml(r.riwayatHafalan)}</div>
+                    </td>
+                    <td>
+                      <span class="spmb-jenjang-badge">${escapeHtml(r.jenjang)}</span>
+                      <div class="spmb-table-subtext">${escapeHtml(r.jalur)} (${escapeHtml(r.asrama)})</div>
+                    </td>
+                    <td>
+                      <div style="font-weight: 600; font-size: 0.8125rem;">${escapeHtml(r.namaAyah || r.namaIbu || '-')}</div>
+                      <div class="spmb-table-subtext">Penghasilan: ${escapeHtml(r.penghasilanOrtu)}</div>
+                      <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="spmb-wa-inline">
+                        <i data-lucide="message-circle" width="13" height="13"></i>
+                        <span>${escapeHtml(r.noWhatsapp)}</span>
+                      </a>
+                    </td>
+                    <td>
+                      <select class="spmb-status-select ${r.status}" data-action="change-spmb-status" data-id="${r.id}">
+                        <option value="pending" ${r.status === 'pending' ? 'selected' : ''}>🟡 Menunggu</option>
+                        <option value="verified" ${r.status === 'verified' ? 'selected' : ''}>🔵 Terverifikasi</option>
+                        <option value="accepted" ${r.status === 'accepted' ? 'selected' : ''}>🟢 Diterima</option>
+                        <option value="rejected" ${r.status === 'rejected' ? 'selected' : ''}>🔴 Ditolak</option>
+                      </select>
+                    </td>
+                    <td style="text-align: right; white-space: nowrap;">
+                      <button type="button" class="btn-icon" data-action="print-spmb-card" data-id="${r.id}" title="Cetak Bukti Pendaftaran">
+                        <i data-lucide="printer" width="15" height="15"></i>
+                      </button>
+                      <button type="button" class="btn-icon" data-action="note-spmb" data-id="${r.id}" title="Catatan Panitia">
+                        <i data-lucide="edit-3" width="15" height="15"></i>
+                      </button>
+                      <button type="button" class="btn-icon btn-icon-danger" data-action="delete-spmb" data-id="${r.id}" title="Hapus Pendaftar">
+                        <i data-lucide="trash-2" width="15" height="15"></i>
+                      </button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        `}
+      </div>
+    </div>
+  `;
+
+  bindTabSpmbEvents(container);
+}
+
+/**
+ * Event bindings untuk Tab SPMB
+ */
+function bindTabSpmbEvents(container) {
+  // 1. Search Query Input
+  const searchInput = document.getElementById('spmb-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      spmbSearchQuery = e.target.value.trim();
+      renderTabSpmb(container);
+      const reFocus = document.getElementById('spmb-search-input');
+      if (reFocus) {
+        reFocus.focus();
+        reFocus.setSelectionRange(reFocus.value.length, reFocus.value.length);
+      }
+    });
+  }
+
+  // 2. Filter Jenjang
+  const filterJenjang = document.getElementById('spmb-filter-jenjang');
+  if (filterJenjang) {
+    filterJenjang.addEventListener('change', (e) => {
+      spmbFilterJenjang = e.target.value;
+      renderTabSpmb(container);
+    });
+  }
+
+  // 3. Filter Status
+  const filterStatus = document.getElementById('spmb-filter-status');
+  if (filterStatus) {
+    filterStatus.addEventListener('change', (e) => {
+      spmbFilterStatus = e.target.value;
+      renderTabSpmb(container);
+    });
+  }
+
+  // 4. Unduh Rekap CSV
+  const exportBtn = document.getElementById('btn-spmb-export-csv');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', () => {
+      const csvContent = exportRegistrationsCsv();
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Rekap_SPMB_Yiqul_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  // 5. Buka Formulir Pendaftaran Baru
+  const openNewBtn = document.getElementById('btn-spmb-open-new');
+  if (openNewBtn) {
+    openNewBtn.addEventListener('click', () => {
+      openSpmbModal('MTs');
+    });
+  }
+
+  // 6. Ubah Status Pendaftar
+  container.querySelectorAll('[data-action="change-spmb-status"]').forEach(selectEl => {
+    selectEl.addEventListener('change', (e) => {
+      const id = selectEl.getAttribute('data-id');
+      const newStatus = selectEl.value;
+      updateRegistrationStatus(id, newStatus);
+      renderTabSpmb(container);
+    });
+  });
+
+  // 7. Cetak Bukti Pendaftaran
+  container.querySelectorAll('[data-action="print-spmb-card"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-id');
+      openSpmbReceiptDirect(id);
+    });
+  });
+
+  // 8. Catatan Panitia
+  container.querySelectorAll('[data-action="note-spmb"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-id');
+      const list = getAllRegistrations();
+      const current = list.find(r => r.id === id);
+      const currentNote = (current && current.adminNotes) || '';
+      const newNote = prompt(`Catatan Panitia untuk santri ${current ? current.namaLengkap : id}:`, currentNote);
+      if (newNote !== null) {
+        updateRegistrationStatus(id, current.status, newNote);
+        renderTabSpmb(container);
+      }
+    });
+  });
+
+  // 9. Hapus Pendaftar
+  container.querySelectorAll('[data-action="delete-spmb"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-id');
+      if (confirm(`Apakah Anda yakin ingin menghapus data pendaftar ${id}? Tindakan ini tidak dapat dibatalkan.`)) {
+        deleteRegistration(id);
+        renderTabSpmb(container);
+      }
+    });
+  });
 }
 
 /**

@@ -83,6 +83,22 @@ export function renderAppCard(app, isFav = false) {
         <i data-lucide="lock" width="14" height="14"></i>
       </button>
     `;
+  } else if (app.id === 'yiqul-psb' || app.targetUrl === '#spmb') {
+    // Direct SPMB Online Wizard
+    modeBadgeText = 'Formulir Langsung';
+    launchActionHtml = `
+      <button 
+        type="button" 
+        class="btn-launch ${isLocked ? 'btn-launch-admin-unlocked' : ''}" 
+        data-action="open-spmb" 
+        data-app-id="${app.id}"
+        aria-label="Buka Pendaftaran SPMB Online"
+        ${isLocked ? 'title="Akses Terbuka Khusus Admin"' : ''}
+      >
+        <span>Daftar Online</span>
+        <i data-lucide="user-plus" width="14" height="14"></i>
+      </button>
+    `;
   } else if (app.targetMode === 'iframe') {
     modeBadgeText = 'Modal Window';
     launchActionHtml = `

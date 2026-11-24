@@ -21,6 +21,7 @@ import { initAdminPanel, openAdminPanel, closeAdminPanel } from './components/Ad
 import { renderLandingHero } from './components/LandingHero.js';
 import { renderLandingFeatures } from './components/LandingFeatures.js';
 import { initPwaInstallPrompt } from './components/PwaInstallPrompt.js';
+import { initSpmbModal } from './components/SpmbModal.js';
 
 /**
  * Update rendering katalog Bento Grid berdasarkan filter saat ini
@@ -106,8 +107,11 @@ function bootstrap() {
   // 5. Inisialisasi Banner Promosi Bergambar (Hero Slider)
   initBannerSlider();
 
-  // 6. Inisialisasi Admin Panel 5 Tab Terpadu & Role Gate
+  // 6. Inisialisasi Admin Panel 6 Tab Terpadu & Role Gate
   initAdminPanel();
+
+  // 6b. Inisialisasi SPMB Online Modal & Pendaftaran Santri Baru
+  initSpmbModal();
 
   // 7. Inisialisasi Event Delegation Kartu Bento
   initBentoGridEvents({
