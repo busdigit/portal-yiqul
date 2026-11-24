@@ -38,7 +38,9 @@ import {
   clearSecurityAuditLogs,
   exportRegistryJson,
   importRegistryJson,
-  resetToDefault
+  resetToDefault,
+  bindPinModalHelpers,
+  resetPinInputState
 } from '../services/storage.js';
 import { createFileUploader } from './FileUploader.js';
 import { escapeHtml, isValidUrl } from '../services/sanitizer.js';
@@ -119,9 +121,11 @@ function showAdminAuthModal() {
       }
     }
 
+    resetPinInputState('admin-pin-input', 'toggle-admin-pin-visibility');
+
     if (pinInput) {
-      pinInput.value = '';
-      if (!rateLimit.isLocked) {
+      const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+      if (!isTouch && !rateLimit.isLocked) {
         setTimeout(() => pinInput.focus(), 100);
       }
     }
@@ -1696,6 +1700,13 @@ export function initAdminPanel() {
       if (e.target === authBackdrop) closeAdminAuthModal();
     });
   }
+
+  // Bind On-Screen Touch Numpad & Eye Toggle
+  bindPinModalHelpers({
+    backdropId: 'admin-auth-modal',
+    inputId: 'admin-pin-input',
+    eyeToggleId: 'toggle-admin-pin-visibility'
+  });
 
   // Handle Tab Switching
   document.querySelectorAll('.admin-nav-tab').forEach(tabBtn => {

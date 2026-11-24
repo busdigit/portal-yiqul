@@ -10,7 +10,16 @@
  */
 
 import { renderAppCard } from './AppCard.js';
-import { getFavorites, toggleFavorite, getAllApps, getAppById, verifyAppAccessPin, checkRateLimit } from '../services/storage.js';
+import {
+  getFavorites,
+  toggleFavorite,
+  getAllApps,
+  getAppById,
+  verifyAppAccessPin,
+  checkRateLimit,
+  bindPinModalHelpers,
+  resetPinInputState
+} from '../services/storage.js';
 import { resetFilters } from './SearchRibbon.js';
 import { escapeHtml } from '../services/sanitizer.js';
 import { recordAppLaunch } from '../services/analytics.js';
@@ -39,9 +48,11 @@ export function openAppLockModal(appId) {
   if (titleEl) titleEl.textContent = `Buka: ${app.title}`;
   if (subEl) subEl.textContent = `Aplikasi ${app.title} Terkunci`;
   if (idInput) idInput.value = app.id;
+  resetPinInputState('app-lock-pin-input', 'toggle-app-lock-pin-visibility');
+
   if (pinInput) {
-    pinInput.value = '';
-    if (!rateLimit.isLocked) {
+    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    if (!isTouch && !rateLimit.isLocked) {
       setTimeout(() => pinInput.focus(), 100);
     }
   }
@@ -400,4 +411,11 @@ export function initBentoGridEvents({ onOpenModal, onEditApp }) {
       }
     });
   }
+
+  // Bind On-Screen Touch Numpad & Eye Toggle untuk App Lock Modal
+  bindPinModalHelpers({
+    backdropId: 'app-lock-modal',
+    inputId: 'app-lock-pin-input',
+    eyeToggleId: 'toggle-app-lock-pin-visibility'
+  });
 }

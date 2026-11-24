@@ -428,3 +428,99 @@ export function checkClickjackingGuard() {
     logSecurityEvent('CLICKJACKING_BLOCKED', 'DANGER', 'Upaya clickjacking cross-origin terdeteksi.');
   }
 }
+
+/* ==========================================================================
+   7. PIN MODAL HELPERS (ON-SCREEN TOUCH NUMPAD & EYE TOGGLE)
+   ========================================================================== */
+
+/**
+ * Bind helper untuk modal PIN: On-Screen Touch Numpad dan Eye Toggle
+ */
+export function bindPinModalHelpers({
+  backdropId,
+  inputId,
+  eyeToggleId,
+  numpadGridSelector = '.pin-numpad-grid'
+}) {
+  if (typeof document === 'undefined') return;
+
+  const backdrop = document.getElementById(backdropId);
+  const input = document.getElementById(inputId);
+  const eyeBtn = document.getElementById(eyeToggleId);
+
+  // 1. Eye Toggle (Intip PIN)
+  const eyeSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const eyeOffSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>';
+
+  if (eyeBtn && !eyeBtn.__hasEyeListener) {
+    eyeBtn.__hasEyeListener = true;
+    eyeBtn.innerHTML = eyeSvg;
+    eyeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!input) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        eyeBtn.innerHTML = eyeOffSvg;
+        eyeBtn.setAttribute('aria-label', 'Sembunyikan PIN');
+      } else {
+        input.type = 'password';
+        eyeBtn.innerHTML = eyeSvg;
+        eyeBtn.setAttribute('aria-label', 'Lihat PIN');
+      }
+    });
+  }
+
+  // 2. On-Screen Touch Numpad Grid
+  if (backdrop) {
+    const numpadGrid = backdrop.querySelector(numpadGridSelector);
+    if (numpadGrid && !numpadGrid.__hasNumpadListener) {
+      numpadGrid.__hasNumpadListener = true;
+      numpadGrid.querySelectorAll('.pin-pad-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!input) return;
+
+          const key = btn.getAttribute('data-key');
+          if (key === 'clear') {
+            input.value = '';
+          } else if (key === 'backspace') {
+            input.value = input.value.slice(0, -1);
+          } else if (/^[0-9]$/.test(key)) {
+            if (input.value.length < 8) {
+              input.value += key;
+            }
+          }
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+      });
+    }
+  }
+
+  // 3. Tapping input brings native focus without getting stuck
+  if (input && !input.__hasTouchFocusListener) {
+    input.__hasTouchFocusListener = true;
+    input.addEventListener('click', () => {
+      input.focus();
+    });
+  }
+}
+
+/**
+ * Reset status input PIN dan ikon mata saat modal dibuka
+ */
+export function resetPinInputState(inputId, eyeToggleId) {
+  if (typeof document === 'undefined') return;
+  const input = document.getElementById(inputId);
+  const eyeBtn = document.getElementById(eyeToggleId);
+  if (input) {
+    input.value = '';
+    input.type = 'password';
+  }
+  if (eyeBtn) {
+    eyeBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+    eyeBtn.setAttribute('aria-label', 'Lihat PIN');
+  }
+}

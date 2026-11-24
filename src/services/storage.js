@@ -24,7 +24,9 @@ import {
   logSecurityEvent,
   getSecurityAuditLogs,
   clearSecurityAuditLogs,
-  sanitizeObject
+  sanitizeObject,
+  bindPinModalHelpers,
+  resetPinInputState
 } from './security.js';
 
 const STORAGE_KEY_APPS = 'yiqul_apps_registry';
@@ -687,5 +689,7 @@ export {
   checkRateLimit,
   getSecurityAuditLogs,
   clearSecurityAuditLogs,
-  logSecurityEvent
+  logSecurityEvent,
+  bindPinModalHelpers,
+  resetPinInputState
 };
