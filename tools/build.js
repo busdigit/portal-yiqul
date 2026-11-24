@@ -22,6 +22,7 @@ const jsFiles = [
   'src/services/sanitizer.js',
   'src/services/security.js',
   'src/services/analytics.js',
+  'src/services/animation.js',
   'src/data/defaultApps.js',
   'src/services/storage.js',
   'src/services/uploader.js',

@@ -3,7 +3,7 @@
  * Portal Yiqul - Unified Digital Ecosystem Launcher
  */
 
-const CACHE_NAME = 'yiqul-portal-v8';
+const CACHE_NAME = 'yiqul-portal-v9';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -21,6 +21,7 @@ const ASSETS_TO_CACHE = [
   './src/services/sanitizer.js',
   './src/services/security.js',
   './src/services/analytics.js',
+  './src/services/animation.js',
   './src/services/uploader.js',
   './src/services/cloudSync.js',
   './src/services/firebaseService.js',

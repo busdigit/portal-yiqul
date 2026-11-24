@@ -14,6 +14,7 @@ import { getFavorites, toggleFavorite, getAllApps, getAppById, verifyAppAccessPi
 import { resetFilters } from './SearchRibbon.js';
 import { escapeHtml } from '../services/sanitizer.js';
 import { recordAppLaunch } from '../services/analytics.js';
+import { animateBentoGridCards } from '../services/animation.js';
 
 let onOpenModalCallback = null;
 let onEditAppCallback = null;
@@ -194,6 +195,7 @@ export function renderSuccessState(apps, { category = 'all', query = '' } = {}) 
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
       window.lucide.createIcons();
     }
+    animateBentoGridCards('#main-bento-grid');
   }
 
   // Render Baris Cepat Favorit jika ada
@@ -235,6 +237,7 @@ function renderFavoritesSection(favorites = getFavorites(), currentCategory = 'a
   if (window.lucide && typeof window.lucide.createIcons === 'function') {
     window.lucide.createIcons();
   }
+  animateBentoGridCards('#favorites-grid');
 }
 
 /**

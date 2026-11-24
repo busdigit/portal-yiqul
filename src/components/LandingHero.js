@@ -9,6 +9,7 @@
 import { getBranding, getAllApps } from '../services/storage.js';
 import { escapeHtml } from '../services/sanitizer.js';
 import { convertGoogleDriveToDirectLink } from '../services/uploader.js';
+import { initLandingHeroAnimation } from '../services/animation.js';
 
 let typewriterTimeoutId = null;
 
@@ -217,6 +218,9 @@ export function renderLandingHero() {
   if (window.lucide && typeof window.lucide.createIcons === 'function') {
     window.lucide.createIcons();
   }
+
+  // Trigger animasi halus GSAP untuk Hero & Floating Navbar
+  initLandingHeroAnimation();
 
   // Mulai animasi Typewriter teks berputar terus menerus
   const phrases = [

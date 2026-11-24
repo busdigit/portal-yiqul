@@ -9,6 +9,7 @@
 import { getAllApps, getBranding } from '../services/storage.js';
 import { escapeHtml } from '../services/sanitizer.js';
 import { getAnalyticsData, formatVisitorNumber } from '../services/analytics.js';
+import { initStatsAnimation, initPillarsAnimation } from '../services/animation.js';
 
 export function renderLandingFeatures() {
   const container = document.getElementById('landing-features-container');
@@ -23,7 +24,7 @@ export function renderLandingFeatures() {
     <section class="landing-stats-row" id="stats-section" aria-label="Statistik Ekosistem & Pemantauan Pengunjung">
       <div class="stats-grid">
         <div class="stat-card">
-          <div class="stat-number">${allApps.length}+</div>
+          <div class="stat-number" id="stat-modules-count">${allApps.length}+</div>
           <div class="stat-label">Sistem & Modul Terhubung</div>
         </div>
         <div class="stat-card stat-card-highlight">
@@ -149,6 +150,10 @@ export function renderLandingFeatures() {
   if (window.lucide && typeof window.lucide.createIcons === 'function') {
     window.lucide.createIcons();
   }
+
+  // Trigger animasi rolling ticker GSAP & staggered entrance
+  initStatsAnimation(analytics, allApps.length);
+  initPillarsAnimation();
 
   // Live real-time update jika analitik bertambah
   window.addEventListener('yiqul-analytics-updated', (e) => {
