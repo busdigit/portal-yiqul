@@ -25,27 +25,40 @@ export function initPwaInstallPrompt() {
 }
 
 function showInstallBanner() {
+  if (sessionStorage.getItem('yiqul_pwa_dismissed') === 'true') {
+    return;
+  }
+
   let banner = document.getElementById('pwa-install-banner');
   if (!banner) {
     banner = document.createElement('div');
     banner.id = 'pwa-install-banner';
-    banner.className = 'pwa-install-toast fade-in';
+    banner.className = 'pwa-install-toast pwa-toast-enter';
+    banner.setAttribute('role', 'dialog');
+    banner.setAttribute('aria-label', 'Pasang Aplikasi Portal Yiqul');
     banner.innerHTML = `
-      <div class="pwa-toast-content">
+      <div class="pwa-toast-header">
         <div class="pwa-toast-icon" aria-hidden="true">
           <i data-lucide="smartphone" width="22" height="22"></i>
         </div>
-        <div class="pwa-toast-text">
-          <strong>Pasang Aplikasi Portal Yiqul</strong>
-          <p>Akses 1-klik langsung dari layar utama HP / Komputer tanpa buka browser.</p>
+        <div class="pwa-toast-info">
+          <div class="pwa-toast-title-row">
+            <strong class="pwa-toast-title">Pasang Aplikasi Portal Yiqul</strong>
+            <span class="pwa-toast-badge">PWA</span>
+          </div>
+          <p class="pwa-toast-desc">Akses cepat 1-klik langsung dari layar HP tanpa perlu buka browser.</p>
         </div>
+        <button type="button" id="btn-pwa-close" class="pwa-toast-close" aria-label="Tutup Banner">
+          <i data-lucide="x" width="16" height="16"></i>
+        </button>
       </div>
       <div class="pwa-toast-actions">
-        <button type="button" id="btn-pwa-dismiss" class="btn-secondary" style="font-size: 0.75rem; padding: 0.35rem 0.75rem; min-height: 32px;">
+        <button type="button" id="btn-pwa-dismiss" class="btn-pwa-secondary">
           Nanti Saja
         </button>
-        <button type="button" id="btn-pwa-install" class="btn-primary" style="font-size: 0.75rem; padding: 0.35rem 1rem; min-height: 32px;">
-          <i data-lucide="download" width="14" height="14"></i> Pasang
+        <button type="button" id="btn-pwa-install" class="btn-pwa-primary">
+          <i data-lucide="download" width="15" height="15"></i>
+          <span>Pasang Sekarang</span>
         </button>
       </div>
     `;
@@ -55,17 +68,30 @@ function showInstallBanner() {
       window.lucide.createIcons();
     }
 
-    document.getElementById('btn-pwa-dismiss').addEventListener('click', hideInstallBanner);
-    document.getElementById('btn-pwa-install').addEventListener('click', triggerInstallPrompt);
+    const dismissHandler = () => {
+      sessionStorage.setItem('yiqul_pwa_dismissed', 'true');
+      hideInstallBanner();
+    };
+
+    document.getElementById('btn-pwa-close')?.addEventListener('click', dismissHandler);
+    document.getElementById('btn-pwa-dismiss')?.addEventListener('click', dismissHandler);
+    document.getElementById('btn-pwa-install')?.addEventListener('click', triggerInstallPrompt);
   } else {
     banner.style.display = 'flex';
+    banner.classList.remove('pwa-toast-exit');
+    banner.classList.add('pwa-toast-enter');
   }
 }
 
 function hideInstallBanner() {
   const banner = document.getElementById('pwa-install-banner');
   if (banner) {
-    banner.style.display = 'none';
+    banner.classList.remove('pwa-toast-enter');
+    banner.classList.add('pwa-toast-exit');
+    setTimeout(() => {
+      banner.style.display = 'none';
+      banner.classList.remove('pwa-toast-exit');
+    }, 250);
   }
 }
 
