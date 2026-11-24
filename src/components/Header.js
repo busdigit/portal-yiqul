@@ -65,7 +65,7 @@ export function initPortalHeroTypewriter() {
     portalTypewriterTimer = setTimeout(loop, speed);
   }
 
-  portalTypewriterTimer = setTimeout(loop, 2200);
+  portalTypewriterTimer = setTimeout(loop, 800);
 }
 
 /**

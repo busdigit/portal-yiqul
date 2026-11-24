@@ -70,7 +70,7 @@ echo.
 :: 4. Tambahkan seluruh berkas
 echo [4/5] Mengemas bundle.css, bundle.js, index.html, src/, assets/, .nojekyll...
 "%GIT_CMD%" add -A
-"%GIT_CMD%" commit -m "feat: implementasi cyber security suite (SHA-256, anti brute force, audit trail, clickjacking guard)"
+"%GIT_CMD%" diff-index --quiet HEAD -- 2>nul || "%GIT_CMD%" commit -m "update: pembaruan sistem dan antarmuka portal yiqul"
 echo.
 
 :: 5. Push ke GitHub
