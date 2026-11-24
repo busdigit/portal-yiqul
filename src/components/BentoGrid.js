@@ -13,6 +13,7 @@ import { renderAppCard } from './AppCard.js';
 import { getFavorites, toggleFavorite, getAllApps, getAppById, verifyAppAccessPin, checkRateLimit } from '../services/storage.js';
 import { resetFilters } from './SearchRibbon.js';
 import { escapeHtml } from '../services/sanitizer.js';
+import { recordAppLaunch } from '../services/analytics.js';
 
 let onOpenModalCallback = null;
 let onEditAppCallback = null;
@@ -262,11 +263,23 @@ export function initBentoGridEvents({ onOpenModal, onEditApp }) {
     if (modalBtn) {
       e.preventDefault();
       const appId = modalBtn.getAttribute('data-app-id');
-      if (appId && typeof onOpenModalCallback === 'function') {
-        const app = getAppById(appId);
-        if (app) onOpenModalCallback(app);
+      if (appId) {
+        recordAppLaunch(appId);
+        if (typeof onOpenModalCallback === 'function') {
+          const app = getAppById(appId);
+          if (app) onOpenModalCallback(app);
+        }
       }
       return;
+    }
+
+    // 2b. Open Direct Link / Tab Baru
+    const launchLink = e.target.closest('a.btn-launch, [data-action="open-tab"]');
+    if (launchLink) {
+      const appId = launchLink.getAttribute('data-app-id');
+      if (appId) {
+        recordAppLaunch(appId);
+      }
     }
 
     // 3. Edit App (Admin)
@@ -325,6 +338,7 @@ export function initBentoGridEvents({ onOpenModal, onEditApp }) {
         closeAppLockModal();
         const app = getAppById(appId);
         if (app) {
+          recordAppLaunch(app.id);
           if (app.targetMode === 'iframe' && typeof onOpenModalCallback === 'function') {
             onOpenModalCallback(app);
           } else if (app.targetMode === '_self') {

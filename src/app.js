@@ -6,6 +6,7 @@
 
 import { getAllApps, getFavorites, logoutAdmin } from './services/storage.js';
 import { initSessionTimeout, checkClickjackingGuard } from './services/security.js';
+import { recordVisit } from './services/analytics.js';
 import { initHeader } from './components/Header.js';
 import { initSearchAndRibbon, filterApps, getCurrentFilterState } from './components/SearchRibbon.js';
 import { 
@@ -81,6 +82,13 @@ function bootstrap() {
     window.__PORTAL_YIQUL_BOOTSTRAPPED__ = true;
   }
   console.log('🚀 [Portal Yiqul] Initializing Unified Ecosystem Launcher & Landing Page...');
+
+  // 0. Pelacakan Pengunjung & Kunjungan Harian Real-time
+  try {
+    recordVisit();
+  } catch (err) {
+    console.warn('[Analytics] Gagal mencatat kunjungan:', err);
+  }
 
   // 1. Inisialisasi Tampilan Landing Page
   renderLandingHero();

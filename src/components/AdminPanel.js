@@ -42,6 +42,12 @@ import {
 } from '../services/storage.js';
 import { createFileUploader } from './FileUploader.js';
 import { escapeHtml, isValidUrl } from '../services/sanitizer.js';
+import {
+  getAnalyticsData,
+  getRecentDailyHistory,
+  calibrateAnalytics,
+  formatVisitorNumber
+} from '../services/analytics.js';
 import { 
   getCloudBackendUrl, 
   saveCloudBackendUrl, 
@@ -881,6 +887,9 @@ function renderTabRoleSettings(container) {
   const currentCloudUrl = getCloudBackendUrl();
   const currentFb = getFirebaseConfig();
   const securityLogs = getSecurityAuditLogs();
+  const analytics = getAnalyticsData();
+  const recentHistory = getRecentDailyHistory(7);
+  const maxVisits = Math.max(...recentHistory.map(h => h.visits), 1);
 
   container.innerHTML = `
     <div style="max-width: 600px; margin: 0 auto;">
@@ -900,6 +909,74 @@ function renderTabRoleSettings(container) {
         <button type="button" id="admin-logout-btn" class="btn-secondary" style="color: #EF4444;">
           <i data-lucide="log-out" width="14" height="14"></i> Keluar Admin
         </button>
+      </div>
+
+      <!-- Pusat Analitik & Pemantauan Pengunjung Harian -->
+      <div style="background-color: var(--bg-surface); border: 1.5px solid rgba(16, 185, 129, 0.4); border-radius: var(--radius-card); padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <h4 style="font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="activity" width="18" height="18" style="color: #10B981;"></i>
+            <span>Pemantauan Pengunjung Harian & Analitik Portal</span>
+          </h4>
+          <span style="font-size: 0.6875rem; background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem;">
+            <span class="live-pulse-dot" style="width: 6px; height: 6px;"></span> Tracker Aktif
+          </span>
+        </div>
+        <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 1rem;">
+          Data statistik jumlah pengunjung yang membuka portal dan frekuensi peluncuran aplikasi secara harian.
+        </p>
+
+        <!-- 4 Grid Metrik Utama -->
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-bottom: 1rem;">
+          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 10px; padding: 0.875rem; text-align: center;">
+            <div style="font-size: 0.75rem; color: #34D399; font-weight: 600; margin-bottom: 0.25rem;">Pengunjung Hari Ini</div>
+            <div style="font-size: 1.625rem; font-weight: 800; color: #10B981;" id="admin-analytics-today">${formatVisitorNumber(analytics.todayVisits)}</div>
+            <div style="font-size: 0.6875rem; color: var(--text-muted);">${formatVisitorNumber(analytics.todayUnique)} pengunjung unik</div>
+          </div>
+          <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 10px; padding: 0.875rem; text-align: center;">
+            <div style="font-size: 0.75rem; color: #60A5FA; font-weight: 600; margin-bottom: 0.25rem;">Total Kunjungan Portal</div>
+            <div style="font-size: 1.625rem; font-weight: 800; color: #3B82F6;" id="admin-analytics-total">${formatVisitorNumber(analytics.totalVisits)}</div>
+            <div style="font-size: 0.6875rem; color: var(--text-muted);">Akumulasi semua sesi</div>
+          </div>
+          <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 10px; padding: 0.875rem; text-align: center;">
+            <div style="font-size: 0.75rem; color: #FBBF24; font-weight: 600; margin-bottom: 0.25rem;">Aplikasi Diluncurkan</div>
+            <div style="font-size: 1.625rem; font-weight: 800; color: #F59E0B;">${formatVisitorNumber(analytics.totalAppLaunches)}</div>
+            <div style="font-size: 0.6875rem; color: var(--text-muted);">Klik Buka Aplikasi</div>
+          </div>
+          <div style="background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 10px; padding: 0.875rem; text-align: center;">
+            <div style="font-size: 0.75rem; color: #A78BFA; font-weight: 600; margin-bottom: 0.25rem;">Rata-rata Harian</div>
+            <div style="font-size: 1.625rem; font-weight: 800; color: #8B5CF6;">~${Math.round(analytics.totalVisits / 28)}</div>
+            <div style="font-size: 0.6875rem; color: var(--text-muted);">Kunjungan per hari</div>
+          </div>
+        </div>
+
+        <!-- Grafik Batang Mini 7 Hari Terakhir -->
+        <div style="background: var(--bg-main); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 0.875rem; margin-bottom: 0.875rem;">
+          <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.75rem; display: flex; justify-content: space-between;">
+            <span>Tren Kunjungan 7 Hari Terakhir</span>
+            <span style="color: var(--text-muted); font-size: 0.6875rem;">Waktu Indonesia Barat (WIB)</span>
+          </div>
+          <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 0.35rem; height: 90px; padding-top: 10px;">
+            ${recentHistory.map(item => {
+              const heightPercent = Math.max(15, Math.min(100, Math.round((item.visits / maxVisits) * 80)));
+              const isToday = item.date === analytics.todayDate;
+              return `
+                <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.25rem; height: 100%; justify-content: flex-end;">
+                  <span style="font-size: 0.625rem; color: ${isToday ? '#10B981' : 'var(--text-muted)'}; font-weight: 700;">${item.visits}</span>
+                  <div style="width: 100%; max-width: 28px; height: ${heightPercent}%; background: ${isToday ? 'linear-gradient(180deg, #10B981, #059669)' : 'rgba(100, 116, 139, 0.4)'}; border-radius: 4px 4px 0 0;" title="${item.label}: ${item.visits} kunjungan (${item.unique} unik)"></div>
+                  <span style="font-size: 0.625rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 38px;">${item.label.split(',')[0]}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+
+        <!-- Tombol Kalibrasi Baseline Angka Kunjungan -->
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+          <button type="button" id="btn-calibrate-analytics" class="btn-secondary" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;">
+            <i data-lucide="sliders" width="13" height="13"></i> Sesuaikan Angka Awal
+          </button>
+        </div>
       </div>
 
       <!-- Pusat Pertahanan Siber & Log Audit Real-Time -->
@@ -1239,6 +1316,29 @@ function renderTabRoleSettings(container) {
       if (confirm('Bersihkan riwayat log audit pertahanan siber?')) {
         clearSecurityAuditLogs();
         renderTabRoleSettings(container);
+      }
+    });
+  }
+
+  // Bind Kalibrasi Baseline Analitik Pengunjung
+  const calibrateBtn = document.getElementById('btn-calibrate-analytics');
+  if (calibrateBtn) {
+    calibrateBtn.addEventListener('click', () => {
+      const current = getAnalyticsData();
+      const newTotalStr = prompt('Masukkan target Total Kunjungan Portal:', String(current.totalVisits));
+      if (newTotalStr === null) return;
+      const newTodayStr = prompt('Masukkan target Kunjungan Pengunjung Hari Ini:', String(current.todayVisits));
+      if (newTodayStr === null) return;
+
+      const newTotal = parseInt(newTotalStr, 10);
+      const newToday = parseInt(newTodayStr, 10);
+
+      if (!isNaN(newTotal) && !isNaN(newToday) && newTotal >= 0 && newToday >= 0) {
+        calibrateAnalytics(newTotal, newToday);
+        alert('Angka statistik kunjungan berhasil disesuaikan!');
+        renderTabRoleSettings(container);
+      } else {
+        alert('Input tidak valid. Harap masukkan angka bulat positif.');
       }
     });
   }

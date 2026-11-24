@@ -21,6 +21,7 @@ console.log('✅ bundle.css berhasil dibuat (' + (bundleCss.length / 1024).toFix
 const jsFiles = [
   'src/services/sanitizer.js',
   'src/services/security.js',
+  'src/services/analytics.js',
   'src/data/defaultApps.js',
   'src/services/storage.js',
   'src/services/uploader.js',

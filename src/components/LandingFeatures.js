@@ -8,6 +8,7 @@
 
 import { getAllApps, getBranding } from '../services/storage.js';
 import { escapeHtml } from '../services/sanitizer.js';
+import { getAnalyticsData, formatVisitorNumber } from '../services/analytics.js';
 
 export function renderLandingFeatures() {
   const container = document.getElementById('landing-features-container');
@@ -15,26 +16,32 @@ export function renderLandingFeatures() {
 
   const allApps = getAllApps();
   const branding = getBranding();
+  const analytics = getAnalyticsData();
 
   container.innerHTML = `
-    <!-- Stats Counter Bar -->
-    <section class="landing-stats-row" id="stats-section" aria-label="Statistik Ekosistem">
+    <!-- Stats Counter Bar (Live Monitoring Pengunjung Harian & Metrik Ekosistem) -->
+    <section class="landing-stats-row" id="stats-section" aria-label="Statistik Ekosistem & Pemantauan Pengunjung">
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-number">${allApps.length}+</div>
           <div class="stat-label">Sistem & Modul Terhubung</div>
         </div>
+        <div class="stat-card stat-card-highlight">
+          <div class="stat-badge-live">
+            <span class="live-pulse-dot"></span>
+            <span>Terpantau Hari Ini</span>
+          </div>
+          <div class="stat-number" id="stat-daily-visitors">${formatVisitorNumber(analytics.todayVisits)}+</div>
+          <div class="stat-label">Pengunjung Harian Aktif</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-badge-pill">Akumulasi Portal</div>
+          <div class="stat-number" id="stat-total-visitors">${formatVisitorNumber(analytics.totalVisits)}+</div>
+          <div class="stat-label">Total Kunjungan Civitas</div>
+        </div>
         <div class="stat-card">
           <div class="stat-number">4,500+</div>
           <div class="stat-label">Santri & Civitas Yiqul</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number">100%</div>
-          <div class="stat-label">Google Drive & Cloud Auto</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number">&lt; 1.2s</div>
-          <div class="stat-label">Waktu Akses Berkecepatan Tinggi</div>
         </div>
       </div>
     </section>
@@ -142,4 +149,18 @@ export function renderLandingFeatures() {
   if (window.lucide && typeof window.lucide.createIcons === 'function') {
     window.lucide.createIcons();
   }
+
+  // Live real-time update jika analitik bertambah
+  window.addEventListener('yiqul-analytics-updated', (e) => {
+    const updated = e.detail;
+    if (!updated) return;
+    const dailyEl = document.getElementById('stat-daily-visitors');
+    const totalEl = document.getElementById('stat-total-visitors');
+    if (dailyEl && typeof updated.todayVisits === 'number') {
+      dailyEl.textContent = `${formatVisitorNumber(updated.todayVisits)}+`;
+    }
+    if (totalEl && typeof updated.totalVisits === 'number') {
+      totalEl.textContent = `${formatVisitorNumber(updated.totalVisits)}+`;
+    }
+  });
 }
