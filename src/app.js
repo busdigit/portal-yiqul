@@ -7,7 +7,7 @@
 import { getAllApps, getFavorites, logoutAdmin } from './services/storage.js';
 import { initSessionTimeout, checkClickjackingGuard } from './services/security.js';
 import { recordVisit } from './services/analytics.js';
-import { initHeader } from './components/Header.js';
+import { initHeader, initPortalHeroTypewriter } from './components/Header.js';
 import { initSearchAndRibbon, filterApps, getCurrentFilterState } from './components/SearchRibbon.js';
 import { 
   renderLoadingSkeleton, 
@@ -54,6 +54,7 @@ function handleRouting() {
     document.body.classList.remove('view-landing');
     document.body.classList.add('view-portal');
     refreshCatalogView();
+    initPortalHeroTypewriter();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   } else {
     // Mode View 1: Landing Page (Techwitpro Style)

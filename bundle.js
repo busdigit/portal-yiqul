@@ -2953,6 +2953,62 @@ function handleDetailedFirebaseError(err) {
 
 
 let clockTimer = null;
+let portalTypewriterTimer = null;
+
+/**
+ * Inisialisasi Mode Typing Teks Emas Menyala pada Portal Hero Title
+ */
+function initPortalHeroTypewriter() {
+  if (typeof window === 'undefined') return;
+  if (portalTypewriterTimer) {
+    clearTimeout(portalTypewriterTimer);
+    portalTypewriterTimer = null;
+  }
+
+  const textEl = document.getElementById('portal-typewriter-text');
+  if (!textEl) return;
+
+  const branding = getBranding();
+  const orgName = branding.organizationName || 'Yayasan Islam Qudwatul Ummah';
+
+  const phrases = [
+    'Gerbang Navigasi Ekosistem Digital',
+    orgName,
+    'Ekosistem Pendidikan Berbasis Karakter & Qur\'ani',
+    'Pusat Layanan Terpadu Day Care s.d SMAT'
+  ];
+
+  let phraseIndex = 0;
+  let charIndex = phrases[0].length;
+  let isDeleting = true;
+
+  function loop() {
+    const current = phrases[phraseIndex % phrases.length];
+
+    if (isDeleting) {
+      charIndex--;
+      textEl.textContent = current.substring(0, charIndex);
+    } else {
+      charIndex++;
+      textEl.textContent = current.substring(0, charIndex);
+    }
+
+    let speed = isDeleting ? 32 : 65;
+
+    if (!isDeleting && charIndex === current.length) {
+      speed = 2600; // Jeda waktu membaca
+      isDeleting = true;
+    } else if (isDeleting && charIndex === 0) {
+      isDeleting = false;
+      phraseIndex++;
+      speed = 350; // Jeda sebelum mulai mengetik frasa berikutnya
+    }
+
+    portalTypewriterTimer = setTimeout(loop, speed);
+  }
+
+  portalTypewriterTimer = setTimeout(loop, 2200);
+}
 
 /**
  * Render Logo dan Identitas Branding Yayasan secara dinamis
@@ -3160,6 +3216,7 @@ function initHeader() {
   initLiveClock();
   initThemeToggle();
   renderAnnouncement();
+  initPortalHeroTypewriter();
 
   // Dengarkan perubahan pengumuman & branding dari admin
   if (typeof window !== 'undefined') {
@@ -3169,6 +3226,7 @@ function initHeader() {
 
     window.addEventListener('yiqul:branding-changed', () => {
       renderBranding();
+      initPortalHeroTypewriter();
     });
   }
 }
@@ -7364,6 +7422,7 @@ function handleRouting() {
     document.body.classList.remove('view-landing');
     document.body.classList.add('view-portal');
     refreshCatalogView();
+    initPortalHeroTypewriter();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   } else {
     // Mode View 1: Landing Page (Techwitpro Style)
