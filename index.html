@@ -22,7 +22,7 @@
   <link rel="icon" type="image/svg+xml" href="./assets/icons/icon.svg">
 
   <!-- Stylesheet (Root Bundle + Modular Fallback) -->
-  <link rel="stylesheet" href="./bundle.css?v=7">
+  <link rel="stylesheet" href="./bundle.css?v=8">
   <link rel="stylesheet" href="src/styles/style.css">
   <link rel="stylesheet" href="src/styles/landing.css">
 
@@ -45,10 +45,10 @@
     <!-- Top Navigation Bar -->
     <nav class="portal-navbar" aria-label="Navigasi Utama">
       <div class="yiqul-container navbar-content">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-          <a href="#/" class="btn-back-to-landing" id="btn-back-to-landing" aria-label="Kembali ke Landing Page Beranda">
+        <div class="nav-brand-group">
+          <a href="#/" class="btn-back-to-landing" id="btn-back-to-landing" aria-label="Kembali ke Landing Page Beranda" title="Kembali ke Beranda">
             <i data-lucide="arrow-left" width="16" height="16"></i>
-            <span>Beranda</span>
+            <span class="btn-back-label">Beranda</span>
           </a>
 
           <a href="#/portal" class="brand-section" aria-label="Portal Yiqul Beranda">
@@ -73,7 +73,7 @@
           </button>
 
           <!-- Admin Dynamic Link & Control Panel Button -->
-          <button id="open-admin-btn" class="btn-primary" aria-label="Buka Panel Pengaturan Admin">
+          <button id="open-admin-btn" class="btn-primary btn-admin-header" aria-label="Buka Panel Pengaturan Admin" title="Buka Panel Admin">
             <i data-lucide="shield" aria-hidden="true"></i>
             <span class="btn-label-desktop">Panel Admin</span>
           </button>
@@ -346,7 +346,7 @@
   </div> <!-- End of #portal-view-container -->
 
   <!-- Main JavaScript App (Root Bundle + Modular Fallback) -->
-  <script src="./bundle.js?v=7" defer></script>
+  <script src="./bundle.js?v=8" defer></script>
   <script type="module" src="src/app.js"></script>
 </body>
 </html>
